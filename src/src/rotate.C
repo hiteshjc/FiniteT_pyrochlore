@@ -1,0 +1,161 @@
+#include"rotate.h"
+#include"matrix_functions.h"
+#include"printing_functions.h"
+#include<omp.h>
+#include"qmcinfo.h"
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_multimin.h>
+
+double cost(const gsl_vector * x, void *params)
+{
+   QMC_Info * p = (QMC_Info *)params;
+   std::vector<RMatrix> in_one_rdm = p->one_rdm;
+   int nstates=in_one_rdm.size();
+   std::vector<RMatrix> out_one_rdm(nstates);
+   RMatrix unitary;
+   int nsites=12;
+   unitary.resize(nsites,nsites);
+   cout<<"Setting unitary in cost"<<endl;
+   for (int i=0;i<nsites;i++)
+   {
+	for (int j=0;j<nsites;j++)
+	{
+   		unitary(i,j) = gsl_vector_get(x, (i*nsites)+j); 
+	}
+   }
+
+   for (int state=0;state<nstates;state++) 
+   {
+   	cout<<"Rotating 1-RDM in cost for state number "<<state<<endl;
+   	rotate_one_rdm(in_one_rdm[state], unitary, out_one_rdm[state]);
+   }
+   
+   cout<<"Unitary"<<endl;
+   print_real_mat(unitary);
+   
+   for (int state=0;state<nstates;state++) 
+   {
+   	cout<<"Out 1-RDM for state number "<<state<<endl;
+   	print_real_mat(out_one_rdm[state]);
+   }
+   RMatrix eye;
+
+   real_matrix_multiply_abt(unitary,unitary,eye);
+   double trace=0.0;
+   for (int i=0;i<12;i++) trace=trace+in_one_rdm[0](i,i);
+   trace=trace/4.0;
+   double value=0.0;
+   cout<<"Calculating cost"<<endl;
+   // Cost from 1-RDM trace
+   for (int state=0;state<nstates;state++)
+   {
+	   //double sum1=0.0;
+	   //for (int i=0;i<4;i++) sum1=sum1+out_one_rdm[state](i,i);
+	   //value=value+pow((sum1-trace),2.0);
+	   for (int i=0;i<4;i++) value=value+pow((out_one_rdm[state](i,i)-trace),2.0);
+   }
+   // Cost from Unitary
+   for (int i=0;i<12;i++) value=value+pow((eye(i,i)-1.0),2.0);
+   for (int i=0;i<12;i++) 
+   {
+	for (int j=0;j<12;j++) 
+	{
+		  if (i!=j) value=value+pow((eye(i,j)-0.0),2.0);
+	}
+   }
+   cout<<"Cost ="<<value<<endl;
+   return value;     
+}
+
+/////////////////////////////////////////////////////////////////////
+void rotate_one_rdm(RMatrix &in_one_rdm,
+		    RMatrix &unitary,
+                    RMatrix &out_one_rdm)
+{
+   int nsites=in_one_rdm.NRows(); 
+   out_one_rdm.resize(nsites,nsites);
+   for (int i=-0;i<nsites*nsites;i++) out_one_rdm[i]=0.0;   
+   RMatrix tmp;
+   real_matrix_multiply(unitary,in_one_rdm,tmp); 
+   real_matrix_multiply_abt(tmp,unitary,out_one_rdm);
+ 
+ //  // Make the out one rdm as close to 0.5 on diagonals 
+ //  for (int i=0;i<nsites;i++)
+ //  {
+ //       for (int k=0;k<nsites;k++)
+ //       {
+ //       	for(int j=0;j<nsites;j++)
+ //       	{
+ //       		for(int m=0;m<nsites;m++)
+ //       		{
+ //       			out_one_rdm(i,k)+=unitary(i,j)*unitary(k,m)*in_one_rdm(j,m);
+
+ //       		}
+ //       	}
+ //       }
+ //  }
+}
+
+
+void optimize_unitary_from_one_rdm(std::vector<RMatrix> &in_one_rdm, RMatrix &unitary, std::vector<RMatrix> &out_one_rdm)  
+{
+        const gsl_multimin_fminimizer_type *T= gsl_multimin_fminimizer_nmsimplex;
+        gsl_multimin_fminimizer           *s=NULL;
+        gsl_vector                        *ss,*x;
+        gsl_multimin_function             minex_func;
+        int                               status;
+        int                               n,nparams;
+        size_t                            iter=0;
+        QMC_Info                          qmc_data;
+        int                               maxiter=500000;
+
+	cout<<"Optimizing unitary...."<<endl;
+        int nstates=in_one_rdm.size();
+        for (int i=0;i<nstates;i++)
+        {
+		cout<<"In 1-RDM"<<endl;
+		print_real_mat(in_one_rdm[i]);
+        }
+	int nsites=in_one_rdm[0].NRows();
+	cout<<"nsites ="<<nsites<<endl;
+        unitary.resize(nsites,nsites);
+	for (int i=0;i<nsites*nsites;i++) unitary[i]=0.0;
+	for (int i=0;i<nsites;i++) unitary(i,i)=1.0;
+      
+        minex_func.f = cost; 
+        nparams=144;
+	n=nparams; 
+	x=gsl_vector_alloc(n);
+	ss=gsl_vector_alloc(n); 
+	gsl_vector_set_all(ss, 0.5);
+        minex_func.n = n; 
+        
+       cout<<" n ="<<n<<endl;       
+       for (int i=0;i<nsites*nsites;i++) gsl_vector_set (x, i, 0.0); 
+       for (int i=0;i<nsites;i++) gsl_vector_set (x, (i*nsites)+i, 1.0);       cout<<"Finished allocating"<<endl; 
+       
+       qmc_data.one_rdm=in_one_rdm;
+       cout<<"Set QMC data"<<endl; 
+       minex_func.params= &qmc_data;
+       cout<<"Set minex.func"<<endl; 
+       s=gsl_multimin_fminimizer_alloc (T,n);
+       cout<<"Set s"<<endl; 
+       gsl_multimin_fminimizer_set(s,&minex_func,x,ss);
+       cout<<"Set fminimizer"<<endl; 
+       iter=0;
+       do
+       {
+
+	      iter++;
+	      cout << "START OF ITER:" << iter << endl;
+	      cout << "++++++++++++++++++++" << endl; 
+	      status = gsl_multimin_fminimizer_iterate (s);
+	      if (status)   /* check if solver is stuck */
+	       break;
+	      double size = gsl_multimin_fminimizer_size (s);
+	      cout<<"Step size in Nelder-Mead = "<<size<<endl;
+	      cout << "++++++++++++++++++++\n\n" << endl; 
+	      status = gsl_multimin_test_size(size,1.0e-10);
+       }while (status == GSL_CONTINUE && iter < maxiter);
+
+} 

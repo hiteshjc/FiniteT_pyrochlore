@@ -1,0 +1,326 @@
+#include"ed.h"
+#include"printing_functions.h"
+#include<omp.h>
+///////////////////////////////////////////////////////////////////////////////////////////
+void ed_with_hints_given(std::vector< std::vector<int> > 		const &map,
+		      	 std::vector< std::vector<double> > 	        const &hints,
+                         std::vector<double> 			        &eigs,
+			 RMatrix 					&eigenvecs,
+			 bool 					        ipr)
+{
+   time_t 				start,end;
+   int 					hilbert=map.size();
+   double 				dif;
+   RMatrix                              ham(hilbert,hilbert);
+ 
+   time (&start);
+   
+   if (ipr) cout<<" Number of states in Matrix diag is "<<hilbert<<endl;
+   for (int i=0;i<hilbert*hilbert;i++) ham[i]=0.0;
+
+   eigs.clear();eigenvecs.clear();
+   eigs.resize(hilbert);eigenvecs.resize(hilbert,hilbert);    
+   
+   for (int i=0;i<hilbert;i++) 
+   {
+	for (int k=0;k<map[i].size();k++)
+	{
+	  ham(i,map[i][k])+=(hints[i][k]);
+	}
+   }
+   
+   real_symmetric_diagonalize(ham,eigs,eigenvecs);
+   time(&end);
+   dif=difftime(end,start);
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+void lanczos_spin_hole_requested_sector
+		     (Ham &h,
+		      int nup_spins,
+		      int nup_holes,
+		      int ndn_holes,
+                      int iterations, 
+                      std::vector<double> &eigs)
+{
+   int                  how_many_eigenvecs=1;
+   int 			size=pow(2,h.num_sites);
+   std::vector<int>     spin_dets,uphole_dets,dnhole_dets;
+   std::vector<int> 	inverse_map_spin(size),inverse_map_uphole(size),inverse_map_dnhole(size);
+   std::vector< std::vector<double> > eigenvecs;
+
+   constrained_dets(h.num_sites,nup_spins,spin_dets);
+   constrained_dets(h.num_sites,nup_holes,uphole_dets);
+   constrained_dets(h.num_sites,ndn_holes,dnhole_dets);
+
+   int n_spin_dets   = spin_dets.size();
+   int n_uphole_dets = uphole_dets.size();
+   int n_dnhole_dets = dnhole_dets.size();
+ 
+   int hilbert=spin_dets.size()*uphole_dets.size()*dnhole_dets.size();
+   iterations=min(iterations,hilbert);
+ 
+   for(int i1=0;i1<n_spin_dets;i1++)   inverse_map_spin[spin_dets[i1]]=i1;
+   for(int i2=0;i2<n_uphole_dets;i2++) inverse_map_uphole[uphole_dets[i2]]=i2;
+   for(int i3=0;i3<n_dnhole_dets;i3++) inverse_map_dnhole[dnhole_dets[i3]]=i3;
+
+   eigs.clear();
+   lanczos_real_spin_hole_given_map(h,iterations,spin_dets,uphole_dets,dnhole_dets,
+   			            inverse_map_spin,inverse_map_uphole,
+				    inverse_map_dnhole,eigs, how_many_eigenvecs, eigenvecs, true,false);
+
+   RMatrix si_sj_spins;
+   compute_si_sj_spins(h.num_sites,eigenvecs[0],
+ 		   spin_dets,uphole_dets,dnhole_dets,
+   	 	   inverse_map_spin,inverse_map_uphole,
+		   inverse_map_dnhole,si_sj_spins);
+
+  print_real_mat(si_sj_spins); 
+  
+  double stag=0.0;
+  for (int i=0;i<h.num_sites;i++)
+  {
+	for (int j=0;j<h.num_sites;j++)
+	{
+		stag+=si_sj_spins(i,j)*h.eta[i]*h.eta[j];
+	}
+  }
+  stag=stag/double(h.num_sites*h.num_sites);
+  cout<<"<M^2> = "<<stag<<endl;
+
+}
+//////////////////////////////////////////////////////////////////////////////
+void lanczos_real_spin_hole_given_map(Ham &h,
+                      int iterations, 
+		      std::vector<int> const &spin_dets,
+		      std::vector<int> const &uphole_dets,
+		      std::vector<int> const &dnhole_dets,
+		      std::vector<int> const &inverse_map_spin,	
+		      std::vector<int> const &inverse_map_uphole,	
+		      std::vector<int> const &inverse_map_dnhole,	
+                      std::vector<double> &eigs,
+		      int how_many_eigenvecs,
+                      std::vector< std::vector<double> > &eigenvecs,
+                      bool store_ham,bool ipr)
+{
+   time_t 	      				start,end;
+   int 						n_spin_dets=spin_dets.size();
+   int 					        n_uphole_dets=uphole_dets.size();
+   int 						n_dnhole_dets=dnhole_dets.size();
+   std::vector<int>                             num_states;
+   num_states.push_back(n_spin_dets);
+   num_states.push_back(n_uphole_dets);
+   num_states.push_back(n_dnhole_dets);
+   int 		      				hilbert=n_spin_dets*n_uphole_dets*n_dnhole_dets;
+   int 						nd=n_dnhole_dets;
+   int 						nud=n_uphole_dets*n_dnhole_dets;
+   bool 	      				orth_failed;
+   iterations=min(iterations,hilbert);
+   double 					dif,tmp;
+   double            				q,alpha,beta,norm;
+   std::vector<double>				alphas,betas;
+   std::vector<double>				w(hilbert),v_p(hilbert),v_o(hilbert), v_p_old(hilbert), ritz_eigenvec(hilbert);
+   std::vector< std::vector<int> > 		vec_new_configs;
+   std::vector< std::vector<double> >           vs;
+   std::vector< std::vector< complex<double> > > vec_hints_list;
+   RMatrix 					t_mat,t_eigenvecs;
+   bool                                         ham_store;
+   double                                       lowest_eigenval_prev;
+
+   eigenvecs.clear();
+   for (int i=0;i<how_many_eigenvecs;i++) eigenvecs.push_back(std::vector<double>());
+
+   ipr=true;
+   if (store_ham)
+   {
+	if (hilbert>4000000) {ham_store=false;}
+   	else {ham_store=true;}
+   }
+   else
+   {
+	ham_store=false;
+   }
+
+   // Initializations
+   cout<<"TRACE: Initializing start vectors and storing Hamiltonian (if possible)"<<endl;
+
+   if (ham_store) {cout<<"Storing Hamiltonian in sparse format... because we can afford to"<<endl;}
+   else           {cout<<"I have decided NOT to store the Hamiltonian"<<endl;}
+    
+   for (int i=0;i<hilbert;i++)
+   {
+        v_p[i]=uniform_rnd();
+        v_o[i]=0.0;w[i]=0.0;
+   }
+
+   if (ham_store)
+   {
+	//cout<<"Storing ham"<<endl; 
+   	for (int i=0;i<hilbert;i++)
+	{
+		std::vector<int>    new_configs;
+		std::vector<int>    new_spin_dets,new_uphole_dets,new_dnhole_dets;
+		std::vector< complex<double> > hints_list;
+		std::vector<int> vec=convert_ind_to_vec(i,num_states);
+		int i0=vec[0];int i1=vec[1];int i2=vec[2]; 
+		//new_configs.clear();
+
+		h(spin_dets[i0],uphole_dets[i1],dnhole_dets[i2],new_spin_dets,new_uphole_dets,
+		  new_dnhole_dets, hints_list); 
+		for (int k=0;k<new_spin_dets.size();k++) 
+		{
+			new_configs.push_back(inverse_map_spin[new_spin_dets[k]]*(nud)+inverse_map_uphole[new_uphole_dets[k]]*(nd)+inverse_map_dnhole[new_dnhole_dets[k]]);
+		}
+		vec_new_configs.push_back(new_configs);     // New configs 
+		vec_hints_list.push_back(hints_list);       // Hints
+	}
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+   }
+       
+   norm=sqrt(ddot(hilbert,&*v_p.begin(),1,&*v_p.begin(),1));
+   dscal(hilbert,1.0/norm,&*v_p.begin(),1);
+  
+   beta=0.0;betas.push_back(beta);
+
+   for (int it=0;it<iterations;it++)
+   {
+       int exit_it=it;
+       cout<<"Doing (Real) Lanczos iteration = "<<it<<endl;
+       vs.push_back(v_p);     
+       time (&start);
+       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+       if (ham_store)
+       {
+	       #pragma omp parallel 
+	       {
+		       # pragma omp for
+		       for (int ip=0;ip<hilbert;ip++) // Computing H*v_p - This is the bulk of the operation
+		       {
+			    int mapsize=vec_new_configs[ip].size();
+			    for (int kp=0;kp<mapsize;kp++)
+			    {
+				w[ip]+=(real(vec_hints_list[ip][kp])*v_p[vec_new_configs[ip][kp]]);
+			    }
+		       }
+	       }
+       }
+       /*else
+       {
+	       for (int i=0;i<hilbert;i++) // Computing H*v_p - This is the bulk of the operation
+	       {
+			if (abs(v_p[i])>1.0e-16)
+			{
+			       h(spin_config,uphole_config,dnhole_config,touched_sites_list_spins,
+			         vals_on_touched_list_spins, touched_sites_list_upholes, vals_on_touched_list_upholes,
+			         touched_sites_list_dnholes, vals_on_touched_list_dnholes, hints_list); 
+			
+		    		for (int k=0;k<new_configs.size();k++)
+		    		{w[new_configs[k]]+=(hints_list[k]*v_p[i]);}
+		    	       //for (k=0;k<new_states.size();k++){w[inverse_map[new_states[k]]]+=(real(hints_list[k])*v_p[i]);}
+			}
+		}
+       }*/
+       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+       
+       daxpy(hilbert,-beta,&*v_o.begin(),1,&*w.begin(),1);
+       alpha=ddot(hilbert,&*w.begin(),1,&*v_p.begin(),1);
+       alphas.push_back(alpha);
+       daxpy(hilbert,-alpha,&*v_p.begin(),1,&*w.begin(),1);
+       v_o=v_p;
+       beta=sqrt(ddot(hilbert,&*w.begin(),1,&*w.begin(),1));
+       v_p=w;
+       dscal(hilbert,1.0/beta,&*v_p.begin(),1);
+       betas.push_back(beta);
+       dscal(hilbert,0.0,&*w.begin(),1);
+
+       // Now reorthogonalize vectors
+       if (vs.size()<iterations)
+       {
+	       orth_failed=false;
+	       for (int i=0;i<vs.size();i++)
+	       {
+		    q=ddot(hilbert,&*vs[i].begin(),1,&*v_p.begin(),1);
+		    if (abs(q)>1.0e-10)
+		    {
+			i=it;
+			if (ipr)
+			{
+				cout<<"q (overlap) ="<<q<<endl;
+				cout<<"--------------------------------------------------"<<endl;
+				cout<<"Orthogonalization failed... choosing random vector"<<endl;
+				cout<<"--------------------------------------------------"<<endl;
+			}
+			orth_failed=true;
+		    }
+		    else
+		    {
+			daxpy(hilbert,-q,&*vs[i].begin(),1,&*v_p.begin(),1);
+		    }
+	       }
+	       norm=sqrt(ddot(hilbert,&*v_p.begin(),1,&*v_p.begin(),1));
+	       dscal(hilbert,1.0/norm,&*v_p.begin(),1);
+	       
+	       norm=0.0;
+	       if (orth_failed)
+	       {
+			while (abs(norm)<1.0e-2)
+			{
+				for (int j=0;j<hilbert;j++)  {v_p_old[j]=uniform_rnd();}
+				norm=sqrt(ddot(hilbert,&*v_p_old.begin(),1,&*v_p_old.begin(),1));
+				dscal(hilbert,1.0/norm,&*v_p_old.begin(),1);
+				//cout<<"norm="<<norm<<endl;
+				v_p=v_p_old;
+				for (int i=0;i<vs.size();i++)
+				{
+					q=ddot(hilbert,&*vs[i].begin(),1,&*v_p_old.begin(),1);
+					if (ipr) cout<<"q (after orth fail )="<<q<<endl;
+					daxpy(hilbert,-q,&*vs[i].begin(),1,&*v_p.begin(),1);
+				}
+				norm=sqrt(ddot(hilbert,&*v_p.begin(),1,&*v_p.begin(),1));
+			}
+			dscal(hilbert,1.0/norm,&*v_p.begin(),1);
+	       }
+      }
+       //vs.push_back(v_p);     
+       time (&end);
+       dif=difftime(end,start);
+       
+       if (ipr)
+       {
+       		cout<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
+       		cout<<"================================================================="<<endl;
+       }
+       if (it %1 ==0) 
+       {
+	       t_mat.clear();t_eigenvecs.clear();eigs.clear();
+	       t_mat.resize(it+1,it+1);t_eigenvecs.resize(it+1,it+1);eigs.resize(it+1);
+	       for (int j=0;j<it+1;j++)
+	       {
+		t_mat(j,j)=alphas[j];
+		if (j+1<it+1)
+		{t_mat(j,j+1)=betas[j+1];t_mat(j+1,j)=betas[j+1];}
+	       }
+	       real_symmetric_diagonalize(t_mat,eigs,t_eigenvecs);
+	       if (abs(eigs[0]-lowest_eigenval_prev)<1.0e-13 and it>0)  // Converged
+	       {it=iterations;}
+	       else
+	       {lowest_eigenval_prev=eigs[0];}
+	       cout<<boost::format("Iteration, Lowest eigenvalue %3i %+.15f") %exit_it %eigs[0]<<endl;
+  	}
+  }
+
+   how_many_eigenvecs=min(hilbert,how_many_eigenvecs);
+   for (int j=0;j<how_many_eigenvecs;j++)
+   {
+	      eigenvecs[j].resize(hilbert); 
+	      if (ipr) cout<<"Making "<<j<<"th Ritz eigenvector"<<endl;
+	      # pragma omp parallel for
+	      for (int i=0;i<hilbert;i++)
+	      {
+		eigenvecs[j][i]=0.0;
+		for (int k=0;k<vs.size();k++){eigenvecs[j][i]+=vs[k][i]*t_eigenvecs(k,j);}
+	      }
+	      if (ipr) cout<<"Done Making "<<j<<"th Ritz eigenvector"<<endl;
+   }      
+   if (hilbert<500) {print_vec_acc(eigenvecs[0],true);
+   cout<<endl;}
+}
