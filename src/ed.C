@@ -634,7 +634,63 @@ void lanczos_sym_evec(Ham &h,
        normalize(v_p);
        outfile<<boost::format("#, Iteration, Lowest eigenvalue %3i %+.15f") %it %energy<<endl;
    }
-   for (int64_t i=0; i<hilbert; i++) outfile<<boost::format("%10i %+.15f") %spin_dets[i] %v_p[i]<<endl;
+   //for (int64_t i=0; i<hilbert; i++) outfile<<boost::format("%10i %+.15f") %spin_dets[i] %v_p[i]<<endl;
+   perform_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms);
+
 }
 
-
+////////////////////////////////////////////////////////////////////////////////////////////
+void perform_measurements(std::vector< complex<double> > &vec, 
+		std::vector<int64_t> &spin_dets, 
+   		std::vector< std::vector<int> > &maps,
+	        std::vector<complex<double> >  &characters,
+		std::vector< char> &reps, std::vector< int64_t> &locreps, 
+		std::vector< int64_t> &ireps, std::vector< char> &norms)
+{
+   int64_t hilbert=vec.size();
+   int nsites=maps[0].size();
+   Matrix szsz(nsites,nsites);
+   int numsyms=maps.size();
+   for (int64_t i=0;i<hilbert;i++)
+   {
+	  int repeatket=norms[spin_dets[i]]-'0';
+	  double factor1=1.0/sqrt(double(maps.size())*double(repeatket));
+	  for (int j=0;j<numsyms;j++)
+	  {
+		int64_t translatedstate1=spin_dets[i];
+		translateT(translatedstate1,maps[j], nsites);
+		complex<double> character1=characters[j]*factor1;
+		#pragma omp parallel for
+		for (int m=0;m<nsites;m++)
+		{
+			for (int n=0;n<nsites;n++)
+			{
+                         	std::vector<int64_t> newstates;
+                         	std::vector< complex<double> > hints_list;
+				calc_hints_szsz(1.0,m,n,translatedstate1,newstates,hints_list);
+				for (int k=0;k<newstates.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstates[k]; 
+					int64_t irep=ireps[newstate];
+					int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(maps.size())*double(repeatbra));
+						szsz(m,n)+=(character1*character2*hints_list[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+			}
+		}
+	  }	
+   }
+}
