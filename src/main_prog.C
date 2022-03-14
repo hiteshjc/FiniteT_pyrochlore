@@ -6,7 +6,6 @@
 
 // Hamiltonian
 #include"hamiltonian.h"
-#include"oleg.h"
 #include"ross.h"
 #include"ybmg.h"
 // ED
@@ -45,7 +44,6 @@ int main(int argc, char *argv[])
  /////////////////////////////////////////////////////////////////////////////
     string hamiltonian;
     Ham *ham=NULL;
-    Spin_Half_Oleg 	      oleg;
     Spin_Half_Ross 	      ross;
     Spin_Half_Ybmg 	      ybmg;
     bool ham_found;
@@ -60,14 +58,7 @@ int main(int argc, char *argv[])
     search_for(string("hamiltonian"),filename,hamiltonian,ham_found);
     if (ham_found) 
     {
-        if (hamiltonian.compare("oleg")==0)
-	{
-	    outfile<<"Setting up Oleg's model"<<endl;
-            oleg_setup(filename,oleg);outfile<<endl;
-            ham=oleg.clone();
-	    outfile<<"Oleg setup completed"<<endl;
-	}
-        else if (hamiltonian.compare("ross")==0)
+        if (hamiltonian.compare("ross")==0)
 	{
 	    outfile<<"Setting up Ross model"<<endl;
             ross_setup(filename,ross);outfile<<endl;
@@ -80,13 +71,6 @@ int main(int argc, char *argv[])
             ybmg_setup(filename,ybmg);outfile<<endl;
             ham=ybmg.clone();
 	    outfile<<"Ybmg setup completed"<<endl;
-	}
-        else if (hamiltonian.compare("oleg_sym")==0)
-	{
-	    outfile<<"Setting up Oleg's model with symmetries"<<endl;
-            oleg_sym_setup(filename,oleg);outfile<<endl;
-            ham=oleg.clone();
-	    outfile<<"Oleg setup with symmetries completed"<<endl;
 	}
         else if (hamiltonian.compare("ybmg_sym")==0)
 	{
@@ -118,7 +102,7 @@ int main(int argc, char *argv[])
     if (neigs_found){neigs=str_to_int(neigs_str);}
     else{neigs=1;}
 
-   for (int i=0;i<100;i++) outfile<<" i = "<<i<<" random = "<<irand()<<endl;
+   //for (int i=0;i<100;i++) outfile<<" i = "<<i<<" random = "<<irand()<<endl;
 /////////////////////////////////////////////////////////////////////////////
 //                              EXACT DIAGONALIZATION
 /////////////////////////////////////////////////////////////////////////////
@@ -176,7 +160,7 @@ int main(int argc, char *argv[])
 	    {		
 		if(hamiltonian.compare("ross_sym")==0)
 		{
-		   lanczos_sym(*ham,sp,eigs,evecs);
+		   lanczos_sym_evec(*ham,sp,eigs,evecs);
 		   outfile<<endl;
 		   outfile<<"---------------------------------------"<<endl;
 		   outfile<<"The Eigenvalues (Ross_sym) from Lanczos are"<<endl;
