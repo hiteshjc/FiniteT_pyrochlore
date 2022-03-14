@@ -96,12 +96,21 @@ void lanczos_sym_evec(Ham &h,
              Simulation_Params &sp, 
              std::vector<double> &eigs,
              std::vector< std::vector< complex<double> > > &eigenvecs);
-
-void perform_measurements(std::vector< complex<double> > &vec, 
+		
+void perform_one_spin_measurements(std::vector< complex<double> > &vec, 
 		std::vector<int64_t> &spin_dets, 
    		std::vector< std::vector<int> > &maps,
 	        std::vector<complex<double> >  &characters,
 		std::vector< char> &reps, std::vector< int64_t> &locreps, 
-		std::vector< int64_t> &ireps, std::vector< char> &norms);
+		std::vector< int64_t> &ireps, std::vector< char> &norms, 
+		Simulation_Params &sp);
+
+void perform_two_spin_measurements(std::vector< complex<double> > &vec, 
+		std::vector<int64_t> &spin_dets, 
+   		std::vector< std::vector<int> > &maps,
+	        std::vector<complex<double> >  &characters,
+		std::vector< char> &reps, std::vector< int64_t> &locreps, 
+		std::vector< int64_t> &ireps, std::vector< char> &norms,
+		Simulation_Params &sp);
 
 #endif

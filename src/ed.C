@@ -598,7 +598,7 @@ void lanczos_sym_evec(Ham &h,
 		h(orig,new_spin_dets,hints, nconns);  // Original hamiltonian acted only on the representatives, return num connects
 		//outfile<<"nconns = "<<nconns<<endl;
 		int repeatket=norms[orig]-'0';
-		outfile<<"repeatket = "<<repeatket<<endl;
+		//outfile<<"repeatket = "<<repeatket<<endl;
 		//outfile<<"new_spin_dets.size()="<<new_spin_dets.size()<<endl;
 		complex<double> hint;
 		double invrepeatket=sqrt(1.0/double(repeatket));
@@ -631,30 +631,38 @@ void lanczos_sym_evec(Ham &h,
        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
        complex<double> energy=conj(zdotc(hilbert,w,v_p));
        equatek(w,v_p);
+       zscalk(hilbert,0.0,w);
        normalize(v_p);
        outfile<<boost::format("#, Iteration, Lowest eigenvalue %3i %+.15f") %it %energy<<endl;
    }
+   outfile.close();
    //for (int64_t i=0; i<hilbert; i++) outfile<<boost::format("%10i %+.15f") %spin_dets[i] %v_p[i]<<endl;
-   perform_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms);
+   perform_one_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
+   perform_two_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-void perform_measurements(std::vector< complex<double> > &vec, 
+void perform_one_spin_measurements(std::vector< complex<double> > &vec, 
 		std::vector<int64_t> &spin_dets, 
    		std::vector< std::vector<int> > &maps,
 	        std::vector<complex<double> >  &characters,
 		std::vector< char> &reps, std::vector< int64_t> &locreps, 
-		std::vector< int64_t> &ireps, std::vector< char> &norms)
+		std::vector< int64_t> &ireps, std::vector< char> &norms, 
+		Simulation_Params &sp)
 {
+   ofstream outfile;
+   const char *cstr = (sp.outfile).c_str();
+   outfile.open(cstr, ofstream::app);
+
    int64_t hilbert=vec.size();
    int nsites=maps[0].size();
-   Matrix szsz(nsites,nsites);
+   std::vector<complex<double> > sx(nsites), sy(nsites), sz(nsites);
    int numsyms=maps.size();
    for (int64_t i=0;i<hilbert;i++)
    {
 	  int repeatket=norms[spin_dets[i]]-'0';
-	  double factor1=1.0/sqrt(double(maps.size())*double(repeatket));
+	  double factor1=1.0/sqrt(double(numsyms)*double(repeatket));
 	  for (int j=0;j<numsyms;j++)
 	  {
 		int64_t translatedstate1=spin_dets[i];
@@ -663,17 +671,15 @@ void perform_measurements(std::vector< complex<double> > &vec,
 		#pragma omp parallel for
 		for (int m=0;m<nsites;m++)
 		{
-			for (int n=0;n<nsites;n++)
-			{
-                         	std::vector<int64_t> newstates;
-                         	std::vector< complex<double> > hints_list;
-				calc_hints_szsz(1.0,m,n,translatedstate1,newstates,hints_list);
-				for (int k=0;k<newstates.size();k++)
+                         	std::vector<int64_t> newstatesx, newstatesy, newstatesz;
+                         	std::vector< complex<double> > hints_listx, hints_listy, hints_listz;
+				calc_hints_sx(1.0,m,translatedstate1,newstatesx,hints_listx);
+				calc_hints_sy(1.0,m,translatedstate1,newstatesy,hints_listy);
+				calc_hints_sz(1.0,m,translatedstate1,newstatesz,hints_listz);
+				for (int k=0;k<newstatesx.size();k++)
 				{
 					// get representative of the new state
-					int64_t newstate=newstates[k]; 
-					int64_t irep=ireps[newstate];
-					int64_t loc=locreps[irep];
+					int64_t newstate=newstatesx[k]; int64_t irep=ireps[newstate]; int64_t loc=locreps[irep];
 					// Now see which symm operations on this rep give the new state
 					complex<double> character2=0.0;
 					for (int j2=0;j2<numsyms;j2++)
@@ -685,12 +691,221 @@ void perform_measurements(std::vector< complex<double> > &vec,
 					if (norms[irep]!='0')
 					{
 	  					int repeatbra=norms[irep]-'0';
-	  					character2=conj(character2)/sqrt(double(maps.size())*double(repeatbra));
-						szsz(m,n)+=(character1*character2*hints_list[k]*vec[i]*conj(vec[loc]));	
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						sx[m]+=(character1*character2*hints_listx[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+				for (int k=0;k<newstatesy.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstatesy[k]; int64_t irep=ireps[newstate]; int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						sy[m]+=(character1*character2*hints_listy[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+				for (int k=0;k<newstatesz.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstatesz[k]; int64_t irep=ireps[newstate]; int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						sz[m]+=(character1*character2*hints_listz[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+		}
+	  }	
+   }
+
+   for (int m=0;m<nsites;m++)
+   {
+   	outfile<<boost::format("# m, Smx, Smy, Smz %3i %+.15f %+.15f %+.15f") %m %sx[m] %sy[m] %sz[m]<<endl;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+void perform_two_spin_measurements(std::vector< complex<double> > &vec, 
+		std::vector<int64_t> &spin_dets, 
+   		std::vector< std::vector<int> > &maps,
+	        std::vector<complex<double> >  &characters,
+		std::vector< char> &reps, std::vector< int64_t> &locreps, 
+		std::vector< int64_t> &ireps, std::vector< char> &norms, 
+		Simulation_Params &sp)
+{
+   ofstream outfile;
+   const char *cstr = (sp.outfile).c_str();
+   outfile.open(cstr, ofstream::app);
+
+   int64_t hilbert=vec.size();
+   int nsites=maps[0].size();
+   Matrix sxsx(nsites,nsites), sxsy(nsites,nsites), sxsz(nsites,nsites), sysy(nsites,nsites), sysz(nsites,nsites), szsz(nsites,nsites);
+   int numsyms=maps.size();
+   for (int64_t i=0;i<hilbert;i++)
+   {
+	  int repeatket=norms[spin_dets[i]]-'0';
+	  double factor1=1.0/sqrt(double(numsyms)*double(repeatket));
+	  for (int j=0;j<numsyms;j++)
+	  {
+		int64_t translatedstate1=spin_dets[i];
+		translateT(translatedstate1,maps[j], nsites);
+		complex<double> character1=characters[j]*factor1;
+		#pragma omp parallel for
+		for (int m=0;m<nsites;m++)
+		{
+			for (int n=0;n<nsites;n++)
+			{
+                         	std::vector<int64_t> newstatesxx, newstatesxy, newstatesxz, newstatesyy, newstatesyz, newstateszz;
+                         	std::vector< complex<double> > hints_listxx, hints_listxy, hints_listxz, hints_listyy, hints_listyz, hints_listzz;
+				calc_hints_sxsx(1.0,m,n,translatedstate1,newstatesxx,hints_listxx);
+				calc_hints_sxsy(1.0,m,n,translatedstate1,newstatesxy,hints_listxy);
+				calc_hints_sxsz(1.0,m,n,translatedstate1,newstatesxz,hints_listxz);
+				calc_hints_sysy(1.0,m,n,translatedstate1,newstatesyy,hints_listyy);
+				calc_hints_sysz(1.0,m,n,translatedstate1,newstatesyz,hints_listyz);
+				calc_hints_szsz(1.0,m,n,translatedstate1,newstateszz,hints_listzz);
+				for (int k=0;k<newstatesxx.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstatesxx[k]; int64_t irep=ireps[newstate]; int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						sxsx(m,n)+=(character1*character2*hints_listxx[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+				for (int k=0;k<newstatesxy.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstatesxy[k]; int64_t irep=ireps[newstate];int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						sxsy(m,n)+=(character1*character2*hints_listxy[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+				for (int k=0;k<newstatesxz.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstatesxz[k]; int64_t irep=ireps[newstate];int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						sxsz(m,n)+=(character1*character2*hints_listxz[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+				for (int k=0;k<newstatesyy.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstatesyy[k]; int64_t irep=ireps[newstate]; int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						sysy(m,n)+=(character1*character2*hints_listyy[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+				for (int k=0;k<newstatesyz.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstatesyz[k]; int64_t irep=ireps[newstate];int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						sysz(m,n)+=(character1*character2*hints_listyz[k]*vec[i]*conj(vec[loc]));	
+					}
+				}
+				for (int k=0;k<newstateszz.size();k++)
+				{
+					// get representative of the new state
+					int64_t newstate=newstateszz[k]; int64_t irep=ireps[newstate]; int64_t loc=locreps[irep];
+					// Now see which symm operations on this rep give the new state
+					complex<double> character2=0.0;
+					for (int j2=0;j2<numsyms;j2++)
+					{
+						int64_t translatedstate2=irep;
+						translateT(translatedstate2,maps[j2], nsites);
+						if (translatedstate2==newstate) {character2+=characters[j2];}	
+					}
+					if (norms[irep]!='0')
+					{
+	  					int repeatbra=norms[irep]-'0';
+	  					character2=conj(character2)/sqrt(double(numsyms)*double(repeatbra));
+						szsz(m,n)+=(character1*character2*hints_listzz[k]*vec[i]*conj(vec[loc]));	
 					}
 				}
 			}
 		}
 	  }	
+   }
+
+   for (int m=0;m<nsites;m++)
+   {
+	for (int n=0;n<nsites;n++)
+	{	
+   		outfile<<boost::format("# m,n, SmxSnx, SmxSny, SmxSnz, SmySny, SmySnz, SmzSnz %3i %3i %+.15f %+.15f %+.15f %+.15f %+.15f %+.15f") %m %n %sxsx(m,n) %sxsy(m,n) %sxsz(m,n) %sysy(m,n) %sysz(m,n) %szsz(m,n)<<endl;
+	}
    }
 }

@@ -118,36 +118,81 @@ void set_signs(int det, std::vector<int> &signs)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+void calc_hints_sx(double coupling, int site, int64_t const &spin_det,
+                   std::vector<int64_t> &new_spin_dets,
+                   std::vector< complex<double> > &hints_list)
+{
+	int64_t new_state=spin_det;
+        // Apply Sx = 1/2*(S+ + S-)
+        int a;
+        a=btest64(spin_det,site);
+
+	if (a==0) {new_state=ibset64(new_state,site);}
+	if (a==1) {new_state=ibclr64(new_state,site);}
+	new_spin_dets.push_back(new_state);
+	hints_list.push_back(0.5*coupling);
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void calc_hints_sy(double coupling, int site, int64_t const &spin_det,
+                   std::vector<int64_t> &new_spin_dets,
+                   std::vector< complex<double> > &hints_list)
+{
+	int64_t new_state=spin_det;
+        // Apply Sy = -i/2*(S+ - S-)
+        int a;
+        a=btest64(spin_det,site);
+	double factor=1.0;
+
+	if (a==0) {new_state=ibset64(new_state,site);factor=1.0;}
+	if (a==1) {new_state=ibclr64(new_state,site);factor=-1.0;}
+	new_spin_dets.push_back(new_state);
+	hints_list.push_back(0.5*coupling*factor*complex<double>(0.0,-1.0));
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void calc_hints_sz(double coupling, int site, int64_t const &spin_det,
+                   std::vector<int64_t> &new_spin_dets,
+                   std::vector< complex<double> > &hints_list)
+{
+	int64_t new_state=spin_det;
+        // Apply Sz 
+        int a=btest64(spin_det,site);
+	new_spin_dets.push_back(new_state);
+	hints_list.push_back(coupling*(double(a)-0.5));
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
 void calc_hints_sxsx(double coupling, 
                          int first, int second, 
                          int64_t const &spin_det,
                          std::vector<int64_t> &new_spin_dets,
                          std::vector< complex<double> > &hints_list)
 {
-	int64_t new_state;
+	int64_t new_state=spin_det;
         // Apply SxSx = 1/4*(S+S+ + S+S- + S-S+ + S-S-)
         int a,b;
         a=btest64(spin_det,first); b=btest64(spin_det,second);
 
-	if (a==0 and b==0)
+	if (first!=second)
 	{
-	    new_state=ibset64(spin_det,first);
-	    new_state=ibset64(new_state,second);
-	}
-	else if (a==0 and b==1)
-	{
-	    new_state=ibset64(spin_det,first);
-	    new_state=ibclr64(new_state,second);
-	}
-	else if (a==1 and b==0)
-	{
-	    new_state=ibclr64(spin_det,first);
-	    new_state=ibset64(new_state,second);
-	}
-	else if (a==1 and b==1)
-	{
-	    new_state=ibclr64(spin_det,first);
-	    new_state=ibclr64(new_state,second);
+		if (a==0 and b==0)
+		{
+		    new_state=ibset64(new_state,first);
+		    new_state=ibset64(new_state,second);
+		}
+		else if (a==0 and b==1)
+		{
+		    new_state=ibset64(new_state,first);
+		    new_state=ibclr64(new_state,second);
+		}
+		else if (a==1 and b==0)
+		{
+		    new_state=ibclr64(new_state,first);
+		    new_state=ibset64(new_state,second);
+		}
+		else if (a==1 and b==1)
+		{
+		    new_state=ibclr64(new_state,first);
+		    new_state=ibclr64(new_state,second);
+		}
 	}
 	new_spin_dets.push_back(new_state);
 	hints_list.push_back(0.25*coupling);
@@ -159,38 +204,46 @@ void calc_hints_sxsy(double coupling,
                          std::vector<int64_t> &new_spin_dets,
                          std::vector< complex<double> > &hints_list)
 {
-	int64_t new_state;
+	int64_t new_state=spin_det;
         // Apply SxSy = -i/4*(S+S+ - S+S- + S-S+ - S-S-)
         int a,b;
         a=btest64(spin_det,first); b=btest64(spin_det,second);
         double factor=1.0;
 
-	if (a==0 and b==0)
+	if (first!=second)
 	{
-	    new_state=ibset64(spin_det,first);
-	    new_state=ibset64(new_state,second);
-	    factor=1.0;
+		if (a==0 and b==0)
+		{
+		    new_state=ibset64(new_state,first);
+		    new_state=ibset64(new_state,second);
+		    factor=1.0;
+		}
+		else if (a==0 and b==1)
+		{
+		    new_state=ibset64(new_state,first);
+		    new_state=ibclr64(new_state,second);
+		    factor=-1.0;
+		}
+		else if (a==1 and b==0)
+		{
+		    new_state=ibclr64(new_state,first);
+		    new_state=ibset64(new_state,second);
+		    factor=1.0;
+		}
+		else if (a==1 and b==1)
+		{
+		    new_state=ibclr64(new_state,first);
+		    new_state=ibclr64(new_state,second);
+		    factor=-1.0;
+		}
+		new_spin_dets.push_back(new_state);
+		hints_list.push_back(0.25*coupling*factor*complex<double>(0.0,-1.0));
 	}
-	else if (a==0 and b==1)
+	else
 	{
-	    new_state=ibset64(spin_det,first);
-	    new_state=ibclr64(new_state,second);
-	    factor=-1.0;
+		new_spin_dets.push_back(new_state);
+		hints_list.push_back(0.5*coupling*(a-0.5)*complex<double>(0.0,1.0));
 	}
-	else if (a==1 and b==0)
-	{
-	    new_state=ibclr64(spin_det,first);
-	    new_state=ibset64(new_state,second);
-	    factor=1.0;
-	}
-	else if (a==1 and b==1)
-	{
-	    new_state=ibclr64(spin_det,first);
-	    new_state=ibclr64(new_state,second);
-	    factor=-1.0;
-	}
-	new_spin_dets.push_back(new_state);
-	hints_list.push_back(0.25*coupling*factor*complex<double>(0.0,-1.0));
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void calc_hints_sxsz(double coupling, 
@@ -215,38 +268,41 @@ void calc_hints_sysy(double coupling,
                          std::vector<int64_t> &new_spin_dets,
                          std::vector< complex<double> > &hints_list)
 {
-	int64_t new_state;
+	int64_t new_state=spin_det;
         // Apply SxSx = -1/4*(S+S+ - S+S- - S-S+ + S-S-)
         int a,b;
         a=btest64(spin_det,first); b=btest64(spin_det,second);
         double factor=1.0;
 
-	if (a==0 and b==0)
+	if (first!=second)
 	{
-	    new_state=ibset64(spin_det,first);
-	    new_state=ibset64(new_state,second);
-	    factor=1.0;
-	}
-	else if (a==0 and b==1)
-	{
-	    new_state=ibset64(spin_det,first);
-	    new_state=ibclr64(new_state,second);
-	    factor=-1.0;
-	}
-	else if (a==1 and b==0)
-	{
-	    new_state=ibclr64(spin_det,first);
-	    new_state=ibset64(new_state,second);
-	    factor=-1.0;
-	}
-	else if (a==1 and b==1)
-	{
-	    new_state=ibclr64(spin_det,first);
-	    new_state=ibclr64(new_state,second);
-	    factor=1.0;
+		if (a==0 and b==0)
+		{
+		    new_state=ibset64(spin_det,first);
+		    new_state=ibset64(new_state,second);
+		    factor=-1.0;
+		}
+		else if (a==0 and b==1)
+		{
+		    new_state=ibset64(spin_det,first);
+		    new_state=ibclr64(new_state,second);
+		    factor=+1.0;
+		}
+		else if (a==1 and b==0)
+		{
+		    new_state=ibclr64(spin_det,first);
+		    new_state=ibset64(new_state,second);
+		    factor=+1.0;
+		}
+		else if (a==1 and b==1)
+		{
+		    new_state=ibclr64(spin_det,first);
+		    new_state=ibclr64(new_state,second);
+		    factor=-1.0;
+		}
 	}
 	new_spin_dets.push_back(new_state);
-	hints_list.push_back(-0.25*coupling*factor);
+	hints_list.push_back(0.25*coupling*factor);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void calc_hints_sysz(double coupling, 

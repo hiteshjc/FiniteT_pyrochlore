@@ -4,6 +4,9 @@
 #include"global.h"
 using namespace std;
 
+void calc_hints_sx(double coupling, int site, int64_t const &spin_det,std::vector<int64_t> &new_spin_dets,std::vector< complex<double> > &hints_list);
+void calc_hints_sy(double coupling, int site, int64_t const &spin_det,std::vector<int64_t> &new_spin_dets,std::vector< complex<double> > &hints_list);
+void calc_hints_sz(double coupling, int site, int64_t const &spin_det,std::vector<int64_t> &new_spin_dets,std::vector< complex<double> > &hints_list);
 void calc_hints_sxsx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
 void calc_hints_sxsy(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
 void calc_hints_sxsz(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
