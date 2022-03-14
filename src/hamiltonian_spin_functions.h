@@ -3,6 +3,14 @@
 
 #include"global.h"
 using namespace std;
+
+void calc_hints_sxsx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_sxsy(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_sxsz(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_sysy(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_sysz(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_szsz(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+
 void calc_hints_xyyzzx(double coupling, 
                    int first, int second, int third, int fourth, int fifth, int sixth, 
                    int spin_det,
