@@ -452,7 +452,7 @@ void lanczos_sym(Ham &h,
 				int64_t location=locreps[news];
 				//outfile<<"location = "<<location<<endl;
 				//if (location!=-1) w[i]+=(hint*v_p[location]);
-				w[i]+=(hint*v_p[location]);
+				w[i]+=(conj(hint)*v_p[location]);
 			}
 		 }
        }
@@ -495,7 +495,7 @@ void lanczos_sym(Ham &h,
 
 }
 
-////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
 void lanczos_sym_evec(Ham &h,
              Simulation_Params &sp, 
              std::vector<double> &eigs,
@@ -623,7 +623,8 @@ void lanczos_sym_evec(Ham &h,
 				int64_t location=locreps[news];
 				//outfile<<"location = "<<location<<endl;
 				//if (location!=-1) w[i]+=(hint*v_p[location]);
-				w[i]+=(hint*v_p[location]);
+				//w[i]+=(hint*v_p[location]);
+				w[i]+=(conj(hint)*v_p[location]); // HJC fixed error - complex conjugate
 			}
 		 }
        }
@@ -637,11 +638,58 @@ void lanczos_sym_evec(Ham &h,
    }
    outfile.close();
    //for (int64_t i=0; i<hilbert; i++) outfile<<boost::format("%10i %+.15f") %spin_dets[i] %v_p[i]<<endl;
-   perform_one_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
-   perform_two_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
+   //perform_one_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
+   //perform_two_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
 
 }
 
+/////////////////////////////////////////////////////////////////////////////////////
+//void perform_one_spin_measurements(std::vector< complex<double> > &vec, 
+//		std::vector<int64_t> &spin_dets, 
+//   		std::vector< std::vector<int> > &maps,
+//	        std::vector<complex<double> >  &characters,
+//		std::vector< char> &reps, std::vector< int64_t> &locreps, 
+//		std::vector< int64_t> &ireps, std::vector< char> &norms, 
+//		Simulation_Params &sp)
+//{
+//        ofstream outfile;
+//        const char *cstr = (sp.outfile).c_str();
+//        outfile.open(cstr, ofstream::app);
+//
+//	#pragma omp parallel for	
+//	for (int64_t i=0;i<hilbert;i++) // Computing Sx*vec - This is the bulk of the operation
+//	{
+//		std::vector<int64_t> 	      new_spin_dets(10*nsites+1);
+//		std::vector<complex<double> > hints(10*nsites+1);
+//		int64_t orig=spin_dets[i];
+//		int nconns;
+//		h.symmetrized_sx(maps,orig,new_spin_dets,hints, nconns); 
+//		int repeatket=norms[orig]-'0';
+//		complex<double> hint;
+//		double invrepeatket=sqrt(1.0/double(repeatket));
+//		for (int j=0;j<nconns;j++)  // Connections to state
+//		{
+//			int64_t news=new_spin_dets[j];
+//			char normnews=norms[news];
+//			if (normnews!='0') // an allowed state 
+//			{
+//				// Works only when reps = 0- 9 
+//				int repeat=normnews-'0'; //will be 0 if normnews='0'
+//				int op=reps[news]-'0'; // if not allowed it will be 0
+//				hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
+//				news=ireps[news]; // faster as rep is stored
+//				int64_t location=locreps[news];
+//				w[i]+=(hint*v_p[location]);
+//			}
+//		 }
+//	}
+//	//cout<<"Finished Computing SxV"<<endl;
+//	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//	complex<double> expectation_value=conj(zdotc(hilbert,w,v_p));
+//	outfile.close();
+//}
+//
+/*
 ////////////////////////////////////////////////////////////////////////////////////////////
 void perform_one_spin_measurements(std::vector< complex<double> > &vec, 
 		std::vector<int64_t> &spin_dets, 
@@ -661,6 +709,7 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
    int numsyms=maps.size();
    for (int64_t i=0;i<hilbert;i++)
    {
+   	  if (i%100000 == 0) {outfile<< i << endl;}
 	  int repeatket=norms[spin_dets[i]]-'0';
 	  double factor1=1.0/sqrt(double(numsyms)*double(repeatket));
 	  for (int j=0;j<numsyms;j++)
@@ -742,7 +791,6 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
    	outfile<<boost::format("# m, Smx, Smy, Smz %3i %+.15f %+.15f %+.15f") %m %sx[m] %sy[m] %sz[m]<<endl;
    }
 }
-
 ////////////////////////////////////////////////////////////////////////////////////////////
 void perform_two_spin_measurements(std::vector< complex<double> > &vec, 
 		std::vector<int64_t> &spin_dets, 
@@ -909,3 +957,4 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 	}
    }
 }
+*/
