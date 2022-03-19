@@ -3,6 +3,14 @@
 
 #include"global.h"
 using namespace std;
+    
+//void symmetrized_sx(std::vector< std::vector<int> > &maps, int site, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+//void symmetrized_sy(std::vector< std::vector<int> > &maps, int site, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+//void symmetrized_sz(std::vector< std::vector<int> > &maps, int site, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+
+void symmetrized_sx(std::vector< std::vector<int> > &maps, std::vector<int> &setofsymsites, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+void symmetrized_sy(std::vector< std::vector<int> > &maps, std::vector<int> &setofsymsites, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+void symmetrized_sz(std::vector< std::vector<int> > &maps, std::vector<int> &setofsymsites, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
 
 void calc_hints_sx(double coupling, int site, int64_t const &spin_det,std::vector<int64_t> &new_spin_dets,std::vector< complex<double> > &hints_list);
 void calc_hints_sy(double coupling, int site, int64_t const &spin_det,std::vector<int64_t> &new_spin_dets,std::vector< complex<double> > &hints_list);

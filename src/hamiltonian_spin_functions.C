@@ -117,6 +117,52 @@ void set_signs(int det, std::vector<int> &signs)
 	    }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_sx(std::vector< std::vector<int> > &maps, std::vector<int> &setofsymsites, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymsites.size();i++){calc_hints_sx(1.0,setofsymsites[i],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_sy(std::vector< std::vector<int> > &maps, std::vector<int> &setofsymsites, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymsites.size();i++){calc_hints_sy(1.0,setofsymsites[i],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_sz(std::vector< std::vector<int> > &maps, std::vector<int> &setofsymsites, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymsites.size();i++){calc_hints_sz(1.0,setofsymsites[i],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//void symmetrized_sx(std::vector< std::vector<int> > &maps, int site, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+//{
+//	std::vector<int> setofsymsites;
+//	for (int i=0;i<maps.size();i++) {setofsymsites.push_back(maps[i][site]);}  // All symmetry related sites
+//	for (int i=0;i<setofsymsites.size();i++){calc_hints_sx(1.0,setofsymsites[i],spin_det,new_spin_dets,hints_list);}
+//	ctr=new_spin_dets.size();
+//}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//void symmetrized_sy(std::vector< std::vector<int> > &maps, int site, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+//{
+//	std::vector<int> setofsymsites;
+//	for (int i=0;i<maps.size();i++) {setofsymsites.push_back(maps[i][site]);}  // All symmetry related sites
+//	for (int i=0;i<setofsymsites.size();i++){calc_hints_sy(1.0,setofsymsites[i],spin_det,new_spin_dets,hints_list);}
+//	ctr=new_spin_dets.size();
+//}
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//void symmetrized_sz(std::vector< std::vector<int> > &maps, int site, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+//{
+//	std::vector<int> setofsymsites;
+//	for (int i=0;i<maps.size();i++) {setofsymsites.push_back(maps[i][site]);}  // All symmetry related sites
+//	for (int i=0;i<setofsymsites.size();i++){calc_hints_sz(1.0,setofsymsites[i],spin_det,new_spin_dets,hints_list);}
+//	ctr=new_spin_dets.size();
+//}
+//
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void calc_hints_sx(double coupling, int site, int64_t const &spin_det,
                    std::vector<int64_t> &new_spin_dets,
