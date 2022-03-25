@@ -641,11 +641,11 @@ void lanczos_sym_evec(Ham &h,
    w.clear();
    v_o.clear();
    perform_one_spin_measurements(v_p, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
-   //perform_two_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
+   perform_two_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
 
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void perform_one_spin_measurements(std::vector< complex<double> > &vec, 
 		std::vector<int64_t> &spin_dets, 
    		std::vector< std::vector<int> > &maps,
@@ -670,8 +670,10 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
 		for (int i=0;i<maps.size();i++) {setofsymsites.push_back(maps[i][m]);}  // All symmetry related sites
 		if (*min_element(setofsymsites.begin(), setofsymsites.end()) == m)
 		{
-			for (int n=0;n<setofsymsites.size();n++) outfile<<setofsymsites[n]<<endl;
 			groups.push_back(setofsymsites);
+			outfile<<"Group "<<groups.size()<<": ";
+			for (int n=0;n<setofsymsites.size();n++) outfile<<setofsymsites[n]<<",";
+			outfile<<endl;
 		}	
 	}	
 
@@ -684,8 +686,8 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
 		#pragma omp parallel for	
 		for (int64_t i=0;i<hilbert;i++) // Computing Sx*vec - This is the bulk of the operation
 		{
-			std::vector<int64_t> 	      new_spin_dets(10*nsites+1);
-			std::vector<complex<double> > hints(10*nsites+1);
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
 			int64_t orig=spin_dets[i];
 			int nconns;
 			symmetrized_sx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
@@ -719,10 +721,10 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		zscalk(hilbert,0.0,w);
 		#pragma omp parallel for	
-		for (int64_t i=0;i<hilbert;i++) // Computing Sx*vec - This is the bulk of the operation
+		for (int64_t i=0;i<hilbert;i++) // Computing Sy*vec - This is the bulk of the operation
 		{
-			std::vector<int64_t> 	      new_spin_dets(10*nsites+1);
-			std::vector<complex<double> > hints(10*nsites+1);
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
 			int64_t orig=spin_dets[i];
 			int nconns;
 			symmetrized_sy(maps,groups[m],orig,new_spin_dets,hints, nconns); 
@@ -756,10 +758,10 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		zscalk(hilbert,0.0,w);
 		#pragma omp parallel for	
-		for (int64_t i=0;i<hilbert;i++) // Computing Sx*vec - This is the bulk of the operation
+		for (int64_t i=0;i<hilbert;i++) // Computing Sz*vec - This is the bulk of the operation
 		{
-			std::vector<int64_t> 	      new_spin_dets(10*nsites+1);
-			std::vector<complex<double> > hints(10*nsites+1);
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
 			int64_t orig=spin_dets[i];
 			int nconns;
 			symmetrized_sz(maps,groups[m],orig,new_spin_dets,hints, nconns); 
@@ -793,6 +795,327 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
 	for (int m=0;m<nsites;m++)
 	{
 		outfile<<boost::format("# m, Smx, Smy, Smz %3i %+.15f %+.15f %+.15f") %m %sx[m] %sy[m] %sz[m]<<endl;
+	}
+	outfile.close();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+void perform_two_spin_measurements(std::vector< complex<double> > &vec, 
+		std::vector<int64_t> &spin_dets, 
+   		std::vector< std::vector<int> > &maps,
+	        std::vector<complex<double> >  &characters,
+		std::vector< char> &reps, std::vector< int64_t> &locreps, 
+		std::vector< int64_t> &ireps, std::vector< char> &norms, 
+		Simulation_Params &sp)
+{
+	int64_t hilbert=spin_dets.size();
+   	int     nsites=maps[0].size();
+   	std::vector<complex<double> > w(hilbert);
+   	Matrix sxsx(nsites,nsites), sxsy_plus_sysx(nsites,nsites), sxsz_plus_szsx(nsites,nsites), sysy(nsites,nsites), sysz_plus_szsy(nsites,nsites), szsz(nsites,nsites);
+        ofstream outfile;
+        const char *cstr = (sp.outfile).c_str();
+        outfile.open(cstr, ofstream::app);
+	std::vector< std::vector< std::vector<int> > > groups;
+
+	// Make groups of sites related by symmetry
+	int numbonds=0;
+	for (int m=0;m<nsites;m++)
+	{
+		for (int n=0;n<nsites;n++)
+		{
+			bool add=true;
+			std::vector< std::vector<int> > setofsymbonds;
+			for (int i=0;i<maps.size();i++) 
+			{
+				std::vector<int> bond;
+				int mnew=maps[i][m];
+				int nnew=maps[i][n];
+				bond.push_back(maps[i][m]);
+				bond.push_back(maps[i][n]);
+				bool addbond=true;
+				for (int l=0;l<setofsymbonds.size();l++)
+				{
+					if ((bond[0]==setofsymbonds[l][0] and bond[1]==setofsymbonds[l][1]) or (bond[0]==setofsymbonds[l][1] and bond[1]==setofsymbonds[l][0]))
+					{
+						addbond=false;
+					}
+				}
+				if (addbond) {setofsymbonds.push_back(bond);}
+				if (mnew<m) {add=false; i=maps.size();} // This has been accounted elsewhere
+				// If bond is present in a previous group then do not add this group
+				for (int j=0;j<groups.size();j++)
+				{
+					for (int k=0;k<groups[j].size();k++)
+					{
+						if ( (bond[0]==groups[j][k][0] and bond[1]==groups[j][k][1]) or (bond[0]==groups[j][k][1] and bond[1]==groups[j][k][0]))
+						{
+							k=groups[j].size();
+							//j=groups.size();
+							//i=maps.size();
+							add=false;
+						}
+					}
+					if (add==false) {j=groups.size();i=maps.size();}
+				}
+			}  
+
+			if (add) 
+			{
+				for (int i=0;i<setofsymbonds.size();i++) {outfile<<"["<<setofsymbonds[i][0]<<","<<setofsymbonds[i][1]<<"],";}
+				outfile<<endl;
+				groups.push_back(setofsymbonds);
+
+			}
+		}	
+	}	
+
+	int numgroups=groups.size();
+	for (int m=0;m<groups.size();m++)
+	{	
+		numbonds+=groups[m].size();
+	}
+	outfile<<"Numgroups = "<<numgroups<<endl;
+	outfile<<"Numbonds  = "<<numbonds<<endl;
+
+	for (int m=0;m<numgroups;m++)
+	{
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		zscalk(hilbert,0.0,w);
+		#pragma omp parallel for	
+		for (int64_t i=0;i<hilbert;i++) // Computing SxSx*vec - This is the bulk of the operation
+		{
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
+			int64_t orig=spin_dets[i];
+			int nconns;
+			symmetrized_sxsx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+			int repeatket=norms[orig]-'0';
+			complex<double> hint;
+			double invrepeatket=sqrt(1.0/double(repeatket));
+			for (int j=0;j<nconns;j++)  // Connections to state
+			{
+				int64_t news=new_spin_dets[j];
+				char normnews=norms[news];
+				if (normnews!='0') // an allowed state 
+				{
+					// Works only when reps = 0- 9 
+					int repeat=normnews-'0'; //will be 0 if normnews='0'
+					int op=reps[news]-'0'; // if not allowed it will be 0
+					hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
+					news=ireps[news]; // faster as rep is stored
+					int64_t location=locreps[news];
+					w[i]+=(conj(hint)*vec[location]);
+				}
+			 }
+		}
+		outfile<<"Finished Computing SxSxV for group m = "<<m<<endl;
+		complex<double> valuex=zdotc(hilbert,vec,w)/double(groups[m].size());
+		for (int ind=0;ind<groups[m].size();ind++) 
+		{
+			int site1=groups[m][ind][0];
+			int site2=groups[m][ind][1];
+			sxsx(site1,site2)=valuex;
+			sxsx(site2,site1)=valuex;
+		}
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		zscalk(hilbert,0.0,w);
+		#pragma omp parallel for	
+		for (int64_t i=0;i<hilbert;i++) // Computing (SxSy + SySx)*vec - This is the bulk of the operation
+		{
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
+			int64_t orig=spin_dets[i];
+			int nconns;
+			symmetrized_sxsy_plus_sysx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+			int repeatket=norms[orig]-'0';
+			complex<double> hint;
+			double invrepeatket=sqrt(1.0/double(repeatket));
+			for (int j=0;j<nconns;j++)  // Connections to state
+			{
+				int64_t news=new_spin_dets[j];
+				char normnews=norms[news];
+				if (normnews!='0') // an allowed state 
+				{
+					// Works only when reps = 0- 9 
+					int repeat=normnews-'0'; //will be 0 if normnews='0'
+					int op=reps[news]-'0'; // if not allowed it will be 0
+					hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
+					news=ireps[news]; // faster as rep is stored
+					int64_t location=locreps[news];
+					w[i]+=(conj(hint)*vec[location]);
+				}
+			 }
+		}
+		outfile<<"Finished Computing (SxSy + SySx) V for group m = "<<m<<endl;
+		complex<double> valuexy=zdotc(hilbert,vec,w)/double(groups[m].size());
+		for (int ind=0;ind<groups[m].size();ind++) 
+		{
+			int site1=groups[m][ind][0];
+			int site2=groups[m][ind][1];
+			sxsy_plus_sysx(site1,site2)=valuexy;
+			sxsy_plus_sysx(site2,site1)=valuexy;
+		}
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		zscalk(hilbert,0.0,w);
+		#pragma omp parallel for	
+		for (int64_t i=0;i<hilbert;i++) // Computing (SxSz + SzSx)*vec - This is the bulk of the operation
+		{
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
+			int64_t orig=spin_dets[i];
+			int nconns;
+			symmetrized_sxsz_plus_szsx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+			int repeatket=norms[orig]-'0';
+			complex<double> hint;
+			double invrepeatket=sqrt(1.0/double(repeatket));
+			for (int j=0;j<nconns;j++)  // Connections to state
+			{
+				int64_t news=new_spin_dets[j];
+				char normnews=norms[news];
+				if (normnews!='0') // an allowed state 
+				{
+					// Works only when reps = 0- 9 
+					int repeat=normnews-'0'; //will be 0 if normnews='0'
+					int op=reps[news]-'0'; // if not allowed it will be 0
+					hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
+					news=ireps[news]; // faster as rep is stored
+					int64_t location=locreps[news];
+					w[i]+=(conj(hint)*vec[location]);
+				}
+			 }
+		}
+		outfile<<"Finished Computing (SxSz + SzSx) V for group m = "<<m<<endl;
+		complex<double> valuexz=zdotc(hilbert,vec,w)/double(groups[m].size());
+		for (int ind=0;ind<groups[m].size();ind++) 
+		{
+			int site1=groups[m][ind][0];
+			int site2=groups[m][ind][1];
+			sxsz_plus_szsx(site1,site2)=valuexz;
+			sxsz_plus_szsx(site2,site1)=valuexz;
+		}
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		zscalk(hilbert,0.0,w);
+		#pragma omp parallel for	
+		for (int64_t i=0;i<hilbert;i++) // Computing SySy*vec - This is the bulk of the operation
+		{
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
+			int64_t orig=spin_dets[i];
+			int nconns;
+			symmetrized_sysy(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+			int repeatket=norms[orig]-'0';
+			complex<double> hint;
+			double invrepeatket=sqrt(1.0/double(repeatket));
+			for (int j=0;j<nconns;j++)  // Connections to state
+			{
+				int64_t news=new_spin_dets[j];
+				char normnews=norms[news];
+				if (normnews!='0') // an allowed state 
+				{
+					// Works only when reps = 0- 9 
+					int repeat=normnews-'0'; //will be 0 if normnews='0'
+					int op=reps[news]-'0'; // if not allowed it will be 0
+					hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
+					news=ireps[news]; // faster as rep is stored
+					int64_t location=locreps[news];
+					w[i]+=(conj(hint)*vec[location]);
+				}
+			 }
+		}
+		outfile<<"Finished Computing SySyV for group m = "<<m<<endl;
+		complex<double> valuey=zdotc(hilbert,vec,w)/double(groups[m].size());
+		for (int ind=0;ind<groups[m].size();ind++) 
+		{
+			int site1=groups[m][ind][0];
+			int site2=groups[m][ind][1];
+			sysy(site1,site2)=valuey;
+			sysy(site2,site1)=valuey;
+		}
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		zscalk(hilbert,0.0,w);
+		#pragma omp parallel for	
+		for (int64_t i=0;i<hilbert;i++) // Computing (SySz + SzSy)*vec - This is the bulk of the operation
+		{
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
+			int64_t orig=spin_dets[i];
+			int nconns;
+			symmetrized_sysz_plus_szsy(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+			int repeatket=norms[orig]-'0';
+			complex<double> hint;
+			double invrepeatket=sqrt(1.0/double(repeatket));
+			for (int j=0;j<nconns;j++)  // Connections to state
+			{
+				int64_t news=new_spin_dets[j];
+				char normnews=norms[news];
+				if (normnews!='0') // an allowed state 
+				{
+					// Works only when reps = 0- 9 
+					int repeat=normnews-'0'; //will be 0 if normnews='0'
+					int op=reps[news]-'0'; // if not allowed it will be 0
+					hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
+					news=ireps[news]; // faster as rep is stored
+					int64_t location=locreps[news];
+					w[i]+=(conj(hint)*vec[location]);
+				}
+			 }
+		}
+		outfile<<"Finished Computing (SySz + SzSy) V for group m = "<<m<<endl;
+		complex<double> valueyz=zdotc(hilbert,vec,w)/double(groups[m].size());
+		for (int ind=0;ind<groups[m].size();ind++) 
+		{
+			int site1=groups[m][ind][0];
+			int site2=groups[m][ind][1];
+			sysz_plus_szsy(site1,site2)=valueyz;
+			sysz_plus_szsy(site2,site1)=valueyz;
+		}
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		zscalk(hilbert,0.0,w);
+		#pragma omp parallel for	
+		for (int64_t i=0;i<hilbert;i++) // Computing SzSz*vec - This is the bulk of the operation
+		{
+			std::vector<int64_t> 	      new_spin_dets;
+			std::vector<complex<double> > hints;
+			int64_t orig=spin_dets[i];
+			int nconns;
+			symmetrized_szsz(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+			int repeatket=norms[orig]-'0';
+			complex<double> hint;
+			double invrepeatket=sqrt(1.0/double(repeatket));
+			for (int j=0;j<nconns;j++)  // Connections to state
+			{
+				int64_t news=new_spin_dets[j];
+				char normnews=norms[news];
+				if (normnews!='0') // an allowed state 
+				{
+					// Works only when reps = 0- 9 
+					int repeat=normnews-'0'; //will be 0 if normnews='0'
+					int op=reps[news]-'0'; // if not allowed it will be 0
+					hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
+					news=ireps[news]; // faster as rep is stored
+					int64_t location=locreps[news];
+					w[i]+=(conj(hint)*vec[location]);
+				}
+			 }
+		}
+		outfile<<"Finished Computing SzSzV for group m = "<<m<<endl;
+		complex<double> valuez=zdotc(hilbert,vec,w)/double(groups[m].size());
+		for (int ind=0;ind<groups[m].size();ind++) 
+		{
+			int site1=groups[m][ind][0];
+			int site2=groups[m][ind][1];
+			szsz(site1,site2)=valuez;
+			szsz(site2,site1)=valuez;
+		}
+	}
+	for (int m=0;m<nsites;m++)
+	{
+		for (int n=0;n<nsites;n++)
+		{	
+			outfile<<boost::format("# m,n, SmxSnx, SmxSny+SmySnx, SmxSnz+SmzSnx, SmySny, SmySnz+SmzSny, SmzSnz %3i %3i %+.15f %+.15f %+.15f %+.15f %+.15f %+.15f") %m %n %real(sxsx(m,n)) %real(sxsy_plus_sysx(m,n)) %real(sxsz_plus_szsx(m,n)) %real(sysy(m,n)) %real(sysz_plus_szsy(m,n)) %real(szsz(m,n))<<endl;
+		}
 	}
 	outfile.close();
 }
