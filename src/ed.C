@@ -558,7 +558,7 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
    // Ground state algorithm 
    if (analysis=="gs")
    {
-	   num_cycles=min(num_cycles,int(hilbert));
+	   //num_cycles=min(num_cycles,int(hilbert));
 	   outfile<<"(GS) num_cycles = "<<num_cycles<<endl;
 	   for (int cycle=0;cycle<num_cycles;cycle++)
 	   {
@@ -581,7 +581,9 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	       complex<double> alpha1=conj(zdotc(hilbert,w,v_o));
 	       alphas.push_back(alpha1);
 	       zscalk(hilbert,0.0,w); // Done with w - set it to zero so that it can be used the next time
-	       
+	      
+	       //outfile<<"Overlap = "<<zdotc(hilbert,v_o,v_p)<<endl;
+
 	       // Make 2x2 matrix and diagonalize
 	       make_tridiagonal_matrix_and_diagonalize(2,alphas,betas,t_mat,eigs,t_eigenvecs);
 	       outfile<<boost::format("#, Cycle, Lowest eigenvalue %3i %+.15f") %cycle %eigs[0]<<endl;
@@ -591,14 +593,16 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	       // Now find the linear combination of v_p and v_o that minimizes the energy. Call this linear combination v_p and cycle
 	       complex<double> c_p=t_eigenvecs(0,0);
 	       complex<double> c_o=t_eigenvecs(1,0);
+	       //outfile<<"Norm = "<<conj(c_p)*c_p + conj(c_o)*c_o<<endl;
 	       # pragma omp parallel for
 	       for (int64_t i=0;i<hilbert; i++)
 	       {
-			w[i]=c_p*v_p[i] + c_o*v_o[i]; 
+			w[i]=(c_p*v_p[i]) + (c_o*v_o[i]); 
 	       }
 	       equatek(w,v_p);  // No need to normalize as transformation is unitary. Save the lowest energy vector as v_p
+	       normalize(v_p);  // Seems like we need this else we have issues of roundoff
+	       zscalk(hilbert,0.0,v_o); // Done with v_o - set it to zero so that it can be used the next time
 	       zscalk(hilbert,0.0,w); // Done with w - set it to zero so that it can be used the next time
-	   
 	   }
 	   outfile.close();
 	   w.clear();

@@ -166,12 +166,12 @@ int main(int argc, char *argv[])
 		if(hamiltonian.compare("ross_sym")==0)
 		{
 		   lanczos_sym(*ham,sp,eigs);
-		   outfile<<endl;
-		   outfile<<"---------------------------------------"<<endl;
-		   outfile<<"The Eigenvalues (Ross_sym) from Lanczos are"<<endl;
-		   outfile<<"---------------------------------------"<<endl;
-		   print_vec_acc(eigs,true,neigs);
-		   outfile<<endl;
+		   //outfile<<endl;
+		   //outfile<<"---------------------------------------"<<endl;
+		   //outfile<<"The Eigenvalues (Ross_sym) from Lanczos are"<<endl;
+		   //outfile<<"---------------------------------------"<<endl;
+		   //print_vec_acc(eigs,true,neigs);
+		   //outfile<<endl;
 	        }		
 	    }   
             /*search_for(string("analysis"),filename,str_ret,found);
