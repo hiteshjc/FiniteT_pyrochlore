@@ -109,9 +109,9 @@ int main(int argc, char *argv[])
     std::vector<double> eigs;
     int hilbert_space;
     int nkrylov,num_cycles,num_vecs, nones;
-    bool nkrylov_found, nones_found, num_cycles_found, num_vecs_found, rotate_found,wffile_found,loadwffile_found, use_sym_found;
+    bool nkrylov_found, nones_found, num_cycles_found, num_vecs_found, rotate_found,wffile_found,loadwffile_found, use_sym_found, analysis_found;
     bool rotate,use_sym;
-    std::string wffile,loadwffile; 
+    std::string wffile,loadwffile,analysis; 
 
     search_for(string("nones"),filename,str_ret,nones_found);
     if (nones_found){nones=str_to_int(str_ret);}
@@ -140,9 +140,14 @@ int main(int argc, char *argv[])
     search_for(string("loadwffile"),filename,str_ret,loadwffile_found);
     if (loadwffile_found){loadwffile=str_ret; outfile<<"LoadWffile = "<<loadwffile<<endl;}
     else{loadwffile=string("random");}
+    
+    search_for(string("analysis"),filename,str_ret,analysis_found);
+    if (analysis_found){analysis=str_ret; outfile<<"Analysis = "<<analysis<<endl;}
+    else{analysis=string("finiteT");}
    
     Simulation_Params sp;
     sp.outfile=outfilename;
+    sp.analysis=analysis;
     sp.use_sym=use_sym;
     sp.iterations=nkrylov;
     sp.nones=nones;
@@ -160,7 +165,7 @@ int main(int argc, char *argv[])
 	    {		
 		if(hamiltonian.compare("ross_sym")==0)
 		{
-		   lanczos_sym_evec(*ham,sp,eigs,evecs);
+		   lanczos_sym(*ham,sp,eigs);
 		   outfile<<endl;
 		   outfile<<"---------------------------------------"<<endl;
 		   outfile<<"The Eigenvalues (Ross_sym) from Lanczos are"<<endl;
@@ -168,18 +173,8 @@ int main(int argc, char *argv[])
 		   print_vec_acc(eigs,true,neigs);
 		   outfile<<endl;
 	        }		
-		if(hamiltonian.compare("ybmg_sym")==0)
-		{
-		   lanczos_sym(*ham,sp,eigs,evecs);
-		   outfile<<endl;
-		   outfile<<"---------------------------------------"<<endl;
-		   outfile<<"The Eigenvalues (Ybmg_sym) from Lanczos are"<<endl;
-		   outfile<<"---------------------------------------"<<endl;
-		   print_vec_acc(eigs,true,neigs);
-		   outfile<<endl;
-	        }		
 	    }   
-            search_for(string("analysis"),filename,str_ret,found);
+            /*search_for(string("analysis"),filename,str_ret,found);
 	    if (str_ret==string("S+S-"))
 	    {
 		outfile<<"Reading wf and calculating S+S-"<<endl;
@@ -189,7 +184,7 @@ int main(int argc, char *argv[])
 	    {
 		outfile<<"Reading wf and calculating SzSz"<<endl;
 		load_wf_get_corrs((*ham).num_sites,loadwffile,sp,string("SzSz"));	
-	    }
+	    }*/
     }
 /////////////////////////////////////////////////////////////////////////////
 //                              CLEAN UP 

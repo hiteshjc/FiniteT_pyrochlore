@@ -45,6 +45,7 @@ class Simulation_Params
 	string 								loadwffile;
 	string 								wffile;
 	string 								outfile;
+	string 								analysis;
 	int 								nones;
         int 								iterations;
 	int 								how_many_eigenvecs;

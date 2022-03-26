@@ -2,6 +2,150 @@
 #include"printing_functions.h"
 #include<omp.h>
 
+
+/////////////////////////////////////////////////////////////////////////////////
+void make_basis(std::vector< std::vector<int> > &maps,
+   		std::vector< complex<double>  > &characters,
+		std::vector< char>    		&reps,
+   		std::vector< int64_t> 		&locreps,
+   		std::vector< int64_t> 		&ireps,
+   		std::vector< char>    		&norms,
+   	        std::vector<int64_t>  		&spin_dets,
+		int64_t 	      		&hilbert)
+{   
+   int64_t fhilbert=reps.size();
+   hilbert=0;
+   spin_dets.clear();
+   #pragma omp parallel for 
+   for (int64_t i=0;i<fhilbert;i++)
+   {
+	get_representative(maps, characters, i, ireps[i], reps[i], norms[i]);
+   }
+   
+   for (int64_t i=0;i<fhilbert;i++)
+   {
+	if (reps[i]=='0' and norms[i]!='0') 
+	{
+		//outfile<<" i  = "<<i<<" norms = "<<norms[i]<<endl;
+		spin_dets.push_back(i);
+		locreps[i]=hilbert;
+		hilbert+=1;
+	}
+   }
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+void initialize_Lanczos_vectors(std::vector< complex<double> > &v_p, 
+			        std::vector< complex<double> > &v_o, 
+		                std::vector< complex<double> > &w)
+{
+   int64_t hilbert=v_p.size();
+   //Initialization......
+   for (int64_t i=0;i<hilbert;i++)
+   {
+		v_p[i]=complex<double> (2.0*uniform_rnd()-1.0, 2.0*uniform_rnd()-1.0);
+		v_o[i]=0.0;w[i]=0.0;
+   }
+   normalize(v_p); 
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+void initialize_alphas_betas(   std::vector< complex<double> > &alphas, 
+			        std::vector< complex<double> > &betas, 
+		                complex<double>  &beta)
+{
+   betas.clear();alphas.clear();  
+   beta=0.0;betas.push_back(beta);
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+void actHonv(   Ham &h,
+   	        std::vector<int64_t>             const &spin_dets,
+   		std::vector< complex<double>  >  const &characters,
+		std::vector< char>               const &reps,
+   		std::vector< int64_t>            const &locreps,
+   		std::vector< int64_t> 		 const &ireps,
+   		std::vector< char>    		 const &norms,
+		std::vector< complex<double> >   const &v_p, 
+		std::vector< complex<double> >   &w)
+{
+       int64_t hilbert=spin_dets.size();
+       int     nsites=h.num_sites;
+
+       #pragma omp parallel for	
+       for (int64_t i=0;i<hilbert;i++) // Computing H*v_p - This is the bulk of the operation
+       {
+		std::vector<int64_t> 	      new_spin_dets(10*nsites+1);
+		std::vector<complex<double> > hints(10*nsites+1);
+		int64_t orig=spin_dets[i];
+		int nconns;
+		h(orig,new_spin_dets,hints, nconns);  // Original hamiltonian acted only on the representatives, return num connects
+		//outfile<<"nconns = "<<nconns<<endl;
+		int repeatket=norms[orig]-'0';
+		//cout<<"new_spin_dets.size()="<<new_spin_dets.size()<<endl;
+		complex<double> hint;
+		double invrepeatket=sqrt(1.0/double(repeatket));
+		for (int j=0;j<nconns;j++)  // Connections to state
+		{
+			int64_t news=new_spin_dets[j];
+			char normnews=norms[news];
+			if (normnews!='0') // an allowed state 
+			{
+				// Works only when reps = 0- 9 
+				int repeat=normnews-'0'; //will be 0 if normnews='0'
+				int op=reps[news]-'0'; // if not allowed it will be 0
+				hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
+				news=ireps[news]; // faster as rep is stored
+				int64_t location=locreps[news];
+				w[i]+=(conj(hint)*v_p[location]);
+			}
+		 }
+       }
+       //cout<<"Finished Computing HV"<<endl;
+}	       
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Lanczos_step_update(complex<double> &beta, 
+		         std::vector< complex<double> >  &alphas, 
+		         std::vector< complex<double> >  &betas, 
+		  	 std::vector< complex<double> > &v_p, 
+	                 std::vector< complex<double> > &v_o, 
+		         std::vector< complex<double> > &w)
+{
+       int64_t hilbert=v_p.size();
+       zaxpyk(hilbert,-beta,v_o,w);
+       complex<double> alpha=conj(zdotc(hilbert,w,v_p));
+       alphas.push_back(alpha);
+       zaxpyk(hilbert,-alpha,v_p,w);
+       equatek(v_p,v_o);
+       beta=sqrt(zdotc(hilbert,w,w));
+       equatek(w,v_p);
+       zscalk(hilbert,1.0/beta,v_p);
+       betas.push_back(beta);
+       zscalk(hilbert,0.0,w);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void make_tridiagonal_matrix_and_diagonalize(int size, 
+			 std::vector< complex<double> >  const &alphas, 
+		         std::vector< complex<double> >  const &betas, 
+   			 Matrix 			 &t_mat,
+			 std::vector<double>             &eigs,
+			 Matrix                          &t_eigenvecs)
+{	       
+       t_mat.clear();t_eigenvecs.clear();eigs.clear();
+       t_mat.resize(size,size);t_eigenvecs.resize(size,size);eigs.resize(size);
+       for (int j=0;j<size;j++)
+       {
+	t_mat(j,j)=alphas[j];
+	if (j+1<size)
+	{t_mat(j,j+1)=betas[j+1];t_mat(j+1,j)=betas[j+1];}
+       }
+       symmetric_diagonalize(t_mat,eigs,t_eigenvecs);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int64_t findstate(      int64_t &rep_id,
                         vector<int64_t> &pBasis)
 {
@@ -291,44 +435,41 @@ void ed_with_hints_given(std::vector< std::vector<int> > 		const &map,
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////
-void load_wf_get_corrs(int nsites, 
-		       string wffile, 
-		       Simulation_Params &smp,
-	      	       string type)
-{
-
-          cout<<"nsites ="<<nsites<<endl;	
-	  int 			 size=pow(2,nsites);
-	  std::vector<double>    wf;
-	  load_wf(wffile,wf);
-	  cout<<"wf.size()="<<wf.size()<<endl;
-	  RMatrix corr_fn(nsites,nsites);	  
-	  cout<<"Computing Correlation function of type "<<type<<" ....."<<endl;
-	  if (type==string("S+S-")) 
-	  {
-		cout<<"Computing here S+S-....."<<endl;
-		compute_spsm(nsites,wf,corr_fn);
-	  }
-	  if (type==string("SzSz")) 
-	  {
-		cout<<"Computing here SzSz....."<<endl;
-		compute_szsz(nsites,wf,corr_fn);
-	  }
-	  cout<<"=============================================================================================="<<endl;
-	  cout<<"   Displaying Correlation function "<<type<<endl;
-	  cout<<"=============================================================================================="<<endl;
-	  for (int i=0;i<nsites;i++)
-	  {
-		for (int j=0;j<nsites;j++) cout<<boost::format("%3i") % i<<" "<<boost::format("%3i") %j<<" "<<boost::format("%+5.10f") %corr_fn(i,j)<<endl;
-	  }
-}
-
+///////////////////////////////////////////////////////////////////////////////////////////
+//void load_wf_get_corrs(int nsites, 
+//		       string wffile, 
+//		       Simulation_Params &smp,
+//	      	       string type)
+//{
+//
+//          cout<<"nsites ="<<nsites<<endl;	
+//	  int 			 size=pow(2,nsites);
+//	  std::vector<double>    wf;
+//	  load_wf(wffile,wf);
+//	  cout<<"wf.size()="<<wf.size()<<endl;
+//	  RMatrix corr_fn(nsites,nsites);	  
+//	  cout<<"Computing Correlation function of type "<<type<<" ....."<<endl;
+//	  if (type==string("S+S-")) 
+//	  {
+//		cout<<"Computing here S+S-....."<<endl;
+//		compute_spsm(nsites,wf,corr_fn);
+//	  }
+//	  if (type==string("SzSz")) 
+//	  {
+//		cout<<"Computing here SzSz....."<<endl;
+//		compute_szsz(nsites,wf,corr_fn);
+//	  }
+//	  cout<<"=============================================================================================="<<endl;
+//	  cout<<"   Displaying Correlation function "<<type<<endl;
+//	  cout<<"=============================================================================================="<<endl;
+//	  for (int i=0;i<nsites;i++)
+//	  {
+//		for (int j=0;j<nsites;j++) cout<<boost::format("%3i") % i<<" "<<boost::format("%3i") %j<<" "<<boost::format("%+5.10f") %corr_fn(i,j)<<endl;
+//	  }
+//}
+//
 //////////////////////////////////////////////////////////////////////////////
-void lanczos_sym(Ham &h,
-             Simulation_Params &sp, 
-             std::vector<double> &eigs,
-             std::vector< std::vector< complex<double> > > &eigenvecs)
+void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 {
    ofstream outfile;
    const char *cstr = (sp.outfile).c_str();
@@ -341,15 +482,15 @@ void lanczos_sym(Ham &h,
    double k2=h.k2;
    double k3=h.k3;
    int 							nsites=h.num_sites;
-   outfile<<"N sites = "<<nsites<<endl;
-   int   						how_many_eigenvecs=sp.how_many_eigenvecs;
+   std::string 						analysis=sp.analysis;
    int 							iterations=sp.iterations;
    int 							num_cycles=sp.num_cycles;
    int64_t 						fhilbert=pow(int64_t(2),int64_t(nsites));
+   int64_t 						hilbert=0;
+   complex<double> 					beta; 
    std::vector< complex<double> >			alphas,betas;
    Matrix 						t_mat,t_eigenvecs;
    std::vector<int64_t>                             	spin_dets;
-   int ctr=0; 
    //
    int L1,L2,L3;
    get_L1L2L3(t1,t2,t3,L1,L2,L3);
@@ -358,293 +499,100 @@ void lanczos_sym(Ham &h,
    k1=(twopi*k1)/double(L1);
    k2=(twopi*k2)/double(L2);
    k3=(twopi*k3)/double(L3);
+   outfile<<"N sites = "<<nsites<<endl;
    outfile<<"L1,L2,L3 = "<<L1<<"  "<<L2<<"  "<<L3<<endl;
    outfile<<"k1,k2,k3 = "<<k1<<"  "<<k2<<"  "<<k3<<endl;
    outfile<<"Full hilbert space ="<<fhilbert<<endl;
    //
-   //
-   int64_t hilbert=0;
    std::vector< std::vector<int> > maps;
    std::vector< complex<double>  > characters;
-   make_maps_and_characters(L1,L2,L3,t1,t2,t3,k1,k2,k3,maps,characters);
    std::vector< char> reps(fhilbert);
    std::vector< int64_t> locreps(fhilbert);
    std::vector< int64_t> ireps(fhilbert);
    std::vector< char> norms(fhilbert);
   
-   #pragma omp parallel for 
-   for (int64_t i=0;i<fhilbert;i++)
-   {
-	//char crep;
-	int64_t irep;
-	//get_representative(maps, characters, i, irep, reps[i], norms[i]);
-	get_representative(maps, characters, i, ireps[i], reps[i], norms[i]);
-   }
-   
-   for (int64_t i=0;i<fhilbert;i++)
-   {
-	//outfile<<" i  = "<<i<<" norms = "<<norms[i]<<endl;
-	if (reps[i]=='0' and norms[i]!='0') 
-	{
-		//outfile<<" i  = "<<i<<" norms = "<<norms[i]<<endl;
-		spin_dets.push_back(i);
-		locreps[i]=hilbert;
-		hilbert+=1;
-	}
-   }
-   //int hilbert=spin_dets.size();
+   // Make maps, character, basis 
+   make_maps_and_characters(L1,L2,L3,t1,t2,t3,k1,k2,k3,maps,characters);
+   make_basis(maps,characters,reps,locreps,ireps,norms,spin_dets,hilbert);
    outfile<<"Symmetrized hilbert space ="<<hilbert<<endl;
-   //return;
 
    std::vector< complex<double> >	w(hilbert),v_p(hilbert),v_o(hilbert);
    outfile.flush(); 
-   //Initialization......
-   for (int64_t i=0;i<hilbert;i++)
-   {
-		v_p[i]=complex<double> (2.0*uniform_rnd()-1.0, 2.0*uniform_rnd()-1.0);
-		v_o[i]=0.0;w[i]=0.0;
-   }
-   
-   // Start 
+   // Initialize
+   initialize_Lanczos_vectors(v_p,v_o,w);
+
+   // Start, initialize alpha, beta 
    outfile<<"Starting Lanczos (complex iterations)..."<<endl; 
    outfile.flush(); 
-   normalize(v_p); 
-   betas.clear();alphas.clear();  
-   complex<double> beta=0.0;betas.push_back(beta);
-   ctr=0;
-   iterations=min(iterations,int(hilbert));
-   outfile<<"Iterations = "<<iterations<<endl;
-   for (int it=0;it<iterations;it++)
-   {
-       time_t start;
-       time (&start);
-       #pragma omp parallel for	
-       for (int64_t i=0;i<hilbert;i++) // Computing H*v_p - This is the bulk of the operation
-       {
-		std::vector<int64_t> 	      new_spin_dets(10*nsites+1);
-		std::vector<complex<double> > hints(10*nsites+1);
-		int64_t orig=spin_dets[i];
-		int nconns;
-		h(orig,new_spin_dets,hints, nconns);  // Original hamiltonian acted only on the representatives, return num connects
-		//outfile<<"nconns = "<<nconns<<endl;
-		int repeatket=norms[orig]-'0';
-		//cout<<"new_spin_dets.size()="<<new_spin_dets.size()<<endl;
-		complex<double> hint;
-		double invrepeatket=sqrt(1.0/double(repeatket));
-		for (int j=0;j<nconns;j++)  // Connections to state
-		{
-			int64_t news=new_spin_dets[j];
-			char normnews=norms[news];
-			if (normnews!='0') // an allowed state 
-			{
-				// Works only when reps = 0- 9 
-				int repeat=normnews-'0'; //will be 0 if normnews='0'
-				int op=reps[news]-'0'; // if not allowed it will be 0
-				//hints[j]=hints[j]*(characters[op]*normket)/norm;
-				// Symmetrized Hamiltonian matrix element from unsymmetrized number
-				//cout<<repeatket<<"  "<<repeat<<endl;
-				//hint=hints[j]*(characters[op]*sqrt(double(repeat)/double(repeatket)));
-				hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
-				//outfile<<"hint = "<<hint<<endl;
-				//translateT(news,maps[op],nsites); // after this news becomes its representative
-				news=ireps[news]; // faster as rep is stored
-				//int64_t location=findstate(news,spin_dets);
-				int64_t location=locreps[news];
-				//outfile<<"location = "<<location<<endl;
-				//if (location!=-1) w[i]+=(hint*v_p[location]);
-				w[i]+=(conj(hint)*v_p[location]);
-			}
-		 }
-       }
-       //cout<<"Finished Computing HV"<<endl;
-       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	       
-       zaxpyk(hilbert,-beta,v_o,w);
-       complex<double> alpha=conj(zdotc(hilbert,w,v_p));
-       alphas.push_back(alpha);
-       zaxpyk(hilbert,-alpha,v_p,w);
-       equatek(v_p,v_o);
-       beta=sqrt(zdotc(hilbert,w,w));
-       equatek(w,v_p);
-       zscalk(hilbert,1.0/beta,v_p);
-       betas.push_back(beta);
-       zscalk(hilbert,0.0,w);
-       time_t end;
-       time (&end);
-       double dif=difftime(end,start);
-       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
-       outfile<<"================================================================="<<endl;
-       outfile.flush();
-       if (it %1 ==0) 
-       {
-	       t_mat.clear();t_eigenvecs.clear();eigs.clear();
-	       t_mat.resize(it+1,it+1);t_eigenvecs.resize(it+1,it+1);eigs.resize(it+1);
-	       for (int j=0;j<it+1;j++)
+ 
+   if (analysis=="finiteT")
+   { 
+	   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
+	   iterations=min(iterations,int(hilbert));
+	   outfile<<"(Finite temp) Iterations = "<<iterations<<endl;
+	   for (int it=0;it<iterations;it++)
+	   {
+	       time_t start;
+	       time (&start);
+	       // Act H on v  to get w
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
+	       // Lanczos orthogonalization, update beta and also the alphas and betas arrays. Also update v_p, v_o, w 
+	       Lanczos_step_update(beta, alphas, betas, v_p, v_o, w); // use the current beta and then update it 
+	       time_t end;
+	       time (&end);
+	       double dif=difftime(end,start);
+	       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
+	       outfile<<"================================================================="<<endl;
+	       outfile.flush();
+	      
+	       // Make tridiagonal matrix and diagonalize every iteration 
+	       if (it %1 ==0) 
 	       {
-		t_mat(j,j)=alphas[j];
-		if (j+1<it+1)
-		{t_mat(j,j+1)=betas[j+1];t_mat(j+1,j)=betas[j+1];}
+		       make_tridiagonal_matrix_and_diagonalize(it+1,alphas,betas,t_mat,eigs,t_eigenvecs);
+		       outfile<<boost::format("#, Iteration, Lowest eigenvalue %3i %+.15f") %it %eigs[0]<<endl;
+		       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
 	       }
-	       symmetric_diagonalize(t_mat,eigs,t_eigenvecs);
-	       outfile<<boost::format("#, Iteration, Lowest eigenvalue %3i %+.15f") %it %eigs[0]<<endl;
+	   }
+   }
+   if (analysis=="gs")
+   {
+	   num_cycles=min(num_cycles,int(hilbert));
+	   outfile<<"(GS) num_cycles = "<<num_cycles<<endl;
+	   for (int cycle=0;cycle<num_cycles;cycle++)
+	   {
+	       initialize_alphas_betas(alphas,betas,beta);
+	       // Act H on v1  to get w
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
+	       complex<double> alpha0=conj(zdotc(hilbert,w,v_p));
+	       alphas.push_back(alpha0);
+	       zaxpyk(hilbert,-alpha0,v_p,w);
+	       beta=sqrt(zdotc(hilbert,w,w));
+	       betas.push_back(beta);
+	       equatek(w,v_o);
+	       zscalk(hilbert,1.0/beta,v_o);
+	       zscalk(hilbert,0.0,w);
+	       // Act H on v2  to get w
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_o,w);
+	       complex<double> alpha1=conj(zdotc(hilbert,w,v_o));
+	       alphas.push_back(alpha1);
+	       zscalk(hilbert,0.0,w);
+	       
+	       // Make 2x2 matrix and diagonalize
+	       make_tridiagonal_matrix_and_diagonalize(2,alphas,betas,t_mat,eigs,t_eigenvecs);
+	       outfile<<boost::format("#, Cycle, Lowest eigenvalue %3i %+.15f") %cycle %eigs[0]<<endl;
 	       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
 
-	       //for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("%+.15f") %eigs[ne]<<endl;
-	}
+	       // Now find the linear combination of v_o and v_p that minimizes the energy. Call this linear combination v_p and continue cycle
+	   }
+	   outfile.close();
+	   w.clear();
+	   v_o.clear();
+	   // Measurements on the ground state
+	   perform_one_spin_measurements(v_p, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
+	   perform_two_spin_measurements(v_p, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
    }
 
 }
-
-/////////////////////////////////////////////////////////////////////////////////////
-void lanczos_sym_evec(Ham &h,
-             Simulation_Params &sp, 
-             std::vector<double> &eigs,
-             std::vector< std::vector< complex<double> > > &eigenvecs)
-{
-   ofstream outfile;
-   const char *cstr = (sp.outfile).c_str();
-   outfile.open(cstr, ofstream::app);
-
-   std::vector<int> t1=h.t1;
-   std::vector<int> t2=h.t2;
-   std::vector<int> t3=h.t3;
-   double k1=h.k1;
-   double k2=h.k2;
-   double k3=h.k3;
-   int 							nsites=h.num_sites;
-   outfile<<"N sites = "<<nsites<<endl;
-   int   						how_many_eigenvecs=sp.how_many_eigenvecs;
-   int 							iterations=sp.iterations;
-   int 							num_cycles=sp.num_cycles;
-   int64_t 						fhilbert=pow(int64_t(2),int64_t(nsites));
-   std::vector< complex<double> >			alphas,betas;
-   Matrix 						t_mat,t_eigenvecs;
-   std::vector<int64_t>                             	spin_dets;
-   int ctr=0; 
-   //
-   int L1,L2,L3;
-   get_L1L2L3(t1,t2,t3,L1,L2,L3);
-   double pi=3.141592653589793238462643383;
-   double twopi=2.00*pi;
-   k1=(twopi*k1)/double(L1);
-   k2=(twopi*k2)/double(L2);
-   k3=(twopi*k3)/double(L3);
-   outfile<<"L1,L2,L3 = "<<L1<<"  "<<L2<<"  "<<L3<<endl;
-   outfile<<"k1,k2,k3 = "<<k1<<"  "<<k2<<"  "<<k3<<endl;
-   outfile<<"Full hilbert space ="<<fhilbert<<endl;
-   //
-   //
-   int64_t hilbert=0;
-   std::vector< std::vector<int> > maps;
-   std::vector< complex<double>  > characters;
-   make_maps_and_characters(L1,L2,L3,t1,t2,t3,k1,k2,k3,maps,characters);
-   std::vector< char> reps(fhilbert);
-   std::vector< int64_t> locreps(fhilbert);
-   std::vector< int64_t> ireps(fhilbert);
-   std::vector< char> norms(fhilbert);
-  
-   #pragma omp parallel for 
-   for (int64_t i=0;i<fhilbert;i++)
-   {
-	//char crep;
-	int64_t irep;
-	get_representative(maps, characters, i, ireps[i], reps[i], norms[i]);
-   }
-   
-   for (int64_t i=0;i<fhilbert;i++)
-   {
-	//outfile<<" i  = "<<i<<" norms = "<<norms[i]<<endl;
-	if (reps[i]=='0' and norms[i]!='0') 
-	{
-		//outfile<<" i  = "<<i<<" norms = "<<norms[i]<<endl;
-		spin_dets.push_back(i);
-		locreps[i]=hilbert;
-		hilbert+=1;
-	}
-   }
-   //int hilbert=spin_dets.size();
-   outfile<<"Symmetrized hilbert space ="<<hilbert<<endl;
-   //return;
-
-   std::vector< complex<double> >	w(hilbert),v_p(hilbert),v_o(hilbert);
-   outfile.flush(); 
-   //Initialization......
-   for (int64_t i=0;i<hilbert;i++)
-   {
-		v_p[i]=complex<double> (2.0*uniform_rnd()-1.0, 0.0);
-		v_o[i]=0.0;w[i]=0.0;
-   }
-   
-   // Start 
-   outfile<<"Starting Lanczos (complex iterations)..."<<endl; 
-   outfile.flush(); 
-   normalize(v_p); 
-   betas.clear();alphas.clear();  
-   complex<double> beta=0.0;betas.push_back(beta);
-   ctr=0;
-   iterations=min(iterations,int(hilbert));
-   outfile<<"Iterations = "<<iterations<<endl;
-   for (int it=0;it<iterations;it++)
-   {
-       time_t start;
-       time (&start);
-       #pragma omp parallel for	
-       for (int64_t i=0;i<hilbert;i++) // Computing H*v_p - This is the bulk of the operation
-       {
-		std::vector<int64_t> 	      new_spin_dets(10*nsites+1);
-		std::vector<complex<double> > hints(10*nsites+1);
-		int64_t orig=spin_dets[i];
-		int nconns;
-		h(orig,new_spin_dets,hints, nconns);  // Original hamiltonian acted only on the representatives, return num connects
-		//outfile<<"nconns = "<<nconns<<endl;
-		int repeatket=norms[orig]-'0';
-		//outfile<<"repeatket = "<<repeatket<<endl;
-		//outfile<<"new_spin_dets.size()="<<new_spin_dets.size()<<endl;
-		complex<double> hint;
-		double invrepeatket=sqrt(1.0/double(repeatket));
-		for (int j=0;j<nconns;j++)  // Connections to state
-		{
-			int64_t news=new_spin_dets[j];
-			char normnews=norms[news];
-			if (normnews!='0') // an allowed state 
-			{
-				// Works only when reps = 0- 9 
-				int repeat=normnews-'0'; //will be 0 if normnews='0'
-				int op=reps[news]-'0'; // if not allowed it will be 0
-				//hints[j]=hints[j]*(characters[op]*normket)/norm;
-				// Symmetrized Hamiltonian matrix element from unsymmetrized number
-				//cout<<repeatket<<"  "<<repeat<<endl;
-				//hint=hints[j]*(characters[op]*sqrt(double(repeat)/double(repeatket)));
-				hint=hints[j]*(characters[op])*sqrt(double(repeat))*invrepeatket;
-				//outfile<<"hint = "<<hint<<endl;
-				//translateT(news,maps[op],nsites); // after this news becomes its representative
-				news=ireps[news]; // faster as rep is stored
-				//int64_t location=findstate(news,spin_dets);
-				int64_t location=locreps[news];
-				//outfile<<"location = "<<location<<endl;
-				//if (location!=-1) w[i]+=(hint*v_p[location]);
-				//w[i]+=(hint*v_p[location]);
-				w[i]+=(conj(hint)*v_p[location]); // HJC fixed error - complex conjugate
-			}
-		 }
-       }
-       //cout<<"Finished Computing HV"<<endl;
-       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-       complex<double> energy=conj(zdotc(hilbert,w,v_p));
-       equatek(w,v_p);
-       zscalk(hilbert,0.0,w);
-       normalize(v_p);
-       outfile<<boost::format("#, Iteration, Lowest eigenvalue %3i %+.15f") %it %energy<<endl;
-   }
-   outfile.close();
-   //for (int64_t i=0; i<hilbert; i++) outfile<<boost::format("%10i %+.15f") %spin_dets[i] %v_p[i]<<endl;
-   w.clear();
-   v_o.clear();
-   perform_one_spin_measurements(v_p, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
-   perform_two_spin_measurements(v_p,spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
-
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void perform_one_spin_measurements(std::vector< complex<double> > &vec, 
 		std::vector<int64_t> &spin_dets, 

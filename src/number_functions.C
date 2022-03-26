@@ -48,7 +48,7 @@ void make_maps_and_characters(int L1, int L2, int L3,
 	for (int i=0;i<nsites;i++) indices.push_back(i); // Identity transformation
 	maps.push_back(indices);
 	print_vec(indices);
-	complex<double> character=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));
+	complex<double> character=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));
 	characters.push_back(character);
 	
 	for (int i=0;i<L1;i++)
@@ -63,12 +63,12 @@ void make_maps_and_characters(int L1, int L2, int L3,
 				maps.push_back(indices);
 				cout<<"t1,t2,t3 = "<<t1v<<"  "<<t2v<<"  "<<t3v<<"  map = ";
 				print_vec(indices);
-				complex<double> character=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));
+				complex<double> character=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));
 				characters.push_back(character);
 			}
 			/*else
 			{
-				complex<double> character=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));
+				complex<double> character=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));
 				characters[where]+=character;
 			}*/
 		}
@@ -84,12 +84,12 @@ void make_maps_and_characters(int L1, int L2, int L3,
 					maps.push_back(indices);
 					cout<<"t1,t2,t3 = "<<t1v<<"  "<<t2v<<"  "<<t3v<<"  map = ";
 					print_vec(indices);
-					complex<double> character=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));
+					complex<double> character=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));
 					characters.push_back(character);
 				}
 				/*else
 				{
-					complex<double> character=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));
+					complex<double> character=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));
 					characters[where]+=character;
 				}*/
 			}
@@ -105,12 +105,12 @@ void make_maps_and_characters(int L1, int L2, int L3,
 					maps.push_back(indices);
 					cout<<"t1,t2,t3 = "<<t1v<<"  "<<t2v<<"  "<<t3v<<"  map = ";
 					print_vec(indices);
-					complex<double> character=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));
+					complex<double> character=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));
 					characters.push_back(character);
 				}
 				/*else
 				{
-					complex<double> character=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));
+					complex<double> character=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));
 					characters[where]+=character;
 				}*/
 			   }
@@ -317,7 +317,7 @@ void get_representative_and_ignore(int L1, int L2, int L3,
 		t1v=t1v+1;
 		//cout<<"New state ="<<newstate<<endl;
 		if (newstate<rep) {rep=newstate;t1v_special=t1v;t2v_special=t2v;t3v_special=t3v;return;}
-		//if (newstate==state) {norm+=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));repeat+=1;}
+		//if (newstate==state) {norm+=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));repeat+=1;}
 	}
 	for (int j=0;j<L2;j++)
 	{
@@ -327,7 +327,7 @@ void get_representative_and_ignore(int L1, int L2, int L3,
 		     t2v=t2v+1;
 		     //cout<<"New state ="<<newstate<<endl;
 		     if (newstate<rep) {rep=newstate;t1v_special=t1v;t2v_special=t2v;t3v_special=t3v;return;}
-		     //if (newstate==state) {norm+=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));repeat+=1;}
+		     //if (newstate==state) {norm+=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));repeat+=1;}
 		}
 		for (int k=0;k<L3;k++)
 		{
@@ -337,12 +337,12 @@ void get_representative_and_ignore(int L1, int L2, int L3,
 			 t3v=t3v+1;
 			 //cout<<"New state ="<<newstate<<endl;
 			 if (newstate<rep) {rep=newstate;t1v_special=t1v;t2v_special=t2v;t3v_special=t3v;return;}
-		     	 //if (newstate==state) {norm+=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));repeat+=1;}
+		     	 //if (newstate==state) {norm+=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));repeat+=1;}
 			}
 		}
 	}
   }
-  phase=exp(complex<double>(0, (k1*double(t1v_special)) + (k2*double(t2v_special)) + (k3*double(t3v_special))));
+  phase=exp(complex<double>(0, (-k1*double(t1v_special)) + (-k2*double(t2v_special)) + (-k3*double(t3v_special))));
   if (abs(norm)>1.0e-10) 
   {
   	norm=sqrt(abs(double(L1*L2*L3)/double(repeat))); 
@@ -382,7 +382,7 @@ void get_representative(int L1, int L2, int L3,
 		t1v=t1v+1;
 		//cout<<"New state ="<<newstate<<endl;
 		if (newstate<rep) {rep=newstate;t1v_special=t1v;t2v_special=t2v;t3v_special=t3v;}
-		if (newstate==state) {norm+=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));repeat+=1;}
+		if (newstate==state) {norm+=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));repeat+=1;}
 	}
 	for (int j=0;j<L2;j++)
 	{
@@ -392,7 +392,7 @@ void get_representative(int L1, int L2, int L3,
 		     t2v=t2v+1;
 		     //cout<<"New state ="<<newstate<<endl;
 		     if (newstate<rep) {rep=newstate;t1v_special=t1v;t2v_special=t2v;t3v_special=t3v;}
-		     if (newstate==state) {norm+=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));repeat+=1;}
+		     if (newstate==state) {norm+=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));repeat+=1;}
 		}
 		for (int k=0;k<L3;k++)
 		{
@@ -402,12 +402,12 @@ void get_representative(int L1, int L2, int L3,
 			 t3v=t3v+1;
 			 //cout<<"New state ="<<newstate<<endl;
 			 if (newstate<rep) {rep=newstate;t1v_special=t1v;t2v_special=t2v;t3v_special=t3v;}
-		     	 if (newstate==state) {norm+=exp(complex<double>(0, (k1*double(t1v)) + (k2*double(t2v)) + (k3*double(t3v))));repeat+=1;}
+		     	 if (newstate==state) {norm+=exp(complex<double>(0, (-k1*double(t1v)) + (-k2*double(t2v)) + (-k3*double(t3v))));repeat+=1;}
 			}
 		}
 	}
   }
-  phase=exp(complex<double>(0, (k1*double(t1v_special)) + (k2*double(t2v_special)) + (k3*double(t3v_special))));
+  phase=exp(complex<double>(0, (-k1*double(t1v_special)) + (-k2*double(t2v_special)) + (-k3*double(t3v_special))));
   if (abs(norm)>1.0e-10) 
   {
   	norm=sqrt(abs(double(L1*L2*L3)/double(repeat))); 
