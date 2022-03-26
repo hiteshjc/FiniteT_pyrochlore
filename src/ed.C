@@ -524,7 +524,8 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
    // Start, initialize alpha, beta 
    outfile<<"Starting Lanczos (complex iterations)..."<<endl; 
    outfile.flush(); 
- 
+
+   // Finite temperature algorithm 
    if (analysis=="finiteT")
    { 
 	   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
@@ -554,6 +555,7 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	       }
 	   }
    }
+   // Ground state algorithm 
    if (analysis=="gs")
    {
 	   num_cycles=min(num_cycles,int(hilbert));
@@ -561,28 +563,42 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	   for (int cycle=0;cycle<num_cycles;cycle++)
 	   {
 	       initialize_alphas_betas(alphas,betas,beta);
-	       // Act H on v1  to get w
+	       // Act H on v_p  to get w
 	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
 	       complex<double> alpha0=conj(zdotc(hilbert,w,v_p));
 	       alphas.push_back(alpha0);
+
+	       // Use the w to obtain v_o
 	       zaxpyk(hilbert,-alpha0,v_p,w);
 	       beta=sqrt(zdotc(hilbert,w,w));
 	       betas.push_back(beta);
 	       equatek(w,v_o);
 	       zscalk(hilbert,1.0/beta,v_o);
-	       zscalk(hilbert,0.0,w);
-	       // Act H on v2  to get w
+	       zscalk(hilbert,0.0,w); // Done with w, set it zero so that it can be used the next time
+
+	       // Act H on v_o  to get w
 	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_o,w);
 	       complex<double> alpha1=conj(zdotc(hilbert,w,v_o));
 	       alphas.push_back(alpha1);
-	       zscalk(hilbert,0.0,w);
+	       zscalk(hilbert,0.0,w); // Done with w - set it to zero so that it can be used the next time
 	       
 	       // Make 2x2 matrix and diagonalize
 	       make_tridiagonal_matrix_and_diagonalize(2,alphas,betas,t_mat,eigs,t_eigenvecs);
 	       outfile<<boost::format("#, Cycle, Lowest eigenvalue %3i %+.15f") %cycle %eigs[0]<<endl;
 	       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
+	       outfile.flush();
 
-	       // Now find the linear combination of v_o and v_p that minimizes the energy. Call this linear combination v_p and continue cycle
+	       // Now find the linear combination of v_p and v_o that minimizes the energy. Call this linear combination v_p and cycle
+	       complex<double> c_p=t_eigenvecs(0,0);
+	       complex<double> c_o=t_eigenvecs(1,0);
+	       # pragma omp parallel for
+	       for (int64_t i=0;i<hilbert; i++)
+	       {
+			w[i]=c_p*v_p[i] + c_o*v_o[i]; 
+	       }
+	       equatek(w,v_p);  // No need to normalize as transformation is unitary. Save the lowest energy vector as v_p
+	       zscalk(hilbert,0.0,w); // Done with w - set it to zero so that it can be used the next time
+	   
 	   }
 	   outfile.close();
 	   w.clear();
