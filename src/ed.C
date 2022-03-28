@@ -136,6 +136,7 @@ void make_tridiagonal_matrix_and_diagonalize(int size,
 {	       
        t_mat.clear();t_eigenvecs.clear();eigs.clear();
        t_mat.resize(size,size);t_eigenvecs.resize(size,size);eigs.resize(size);
+       for (int j=0;j<size*size;j++) {t_mat[j]=0.0;t_eigenvecs[j]=0.0;}
        for (int j=0;j<size;j++)
        {
 	t_mat(j,j)=alphas[j];
@@ -556,6 +557,7 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
    // Ground state algorithm using two Krylov vectors only 
    if (analysis=="gs")
    {
+	   std::vector< complex<double> > v_n(hilbert);
 	   //num_cycles=min(num_cycles,int(hilbert));
 	   outfile<<"(GS) num_cycles = "<<num_cycles<<endl;
 	   for (int cycle=0;cycle<num_cycles;cycle++)
@@ -566,7 +568,7 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	       complex<double> alpha0=conj(zdotc(hilbert,w,v_p));
 	       alphas.push_back(alpha0);
 
-	       // Use the w to obtain v_o
+	       // Use the w to obtain v_o 
 	       zaxpyk(hilbert,-alpha0,v_p,w);
 	       beta=sqrt(zdotc(hilbert,w,w));
 	       betas.push_back(beta);
@@ -574,37 +576,56 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	       zscalk(hilbert,1.0/beta,v_o);
 	       zscalk(hilbert,0.0,w); // Done with w, set it zero so that it can be used the next time
 
-	       // Act H on v_o  to get w
+	       // Act H on v_o  to get w and alpha1
 	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_o,w);
+       	       zaxpyk(hilbert,-beta,v_p,w);
 	       complex<double> alpha1=conj(zdotc(hilbert,w,v_o));
 	       alphas.push_back(alpha1);
+
+
+	       // Use the w to obtain v_n
+       	       zaxpyk(hilbert,-alpha1,v_o,w);
+	       beta=sqrt(zdotc(hilbert,w,w));
+	       betas.push_back(beta);
+	       equatek(w,v_n);
+	       zscalk(hilbert,1.0/beta,v_n);
 	       zscalk(hilbert,0.0,w); // Done with w - set it to zero so that it can be used the next time
+	       
+	       // Act H on v_n  to get w and alpha2
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_n,w);
+	       complex<double> alpha2=conj(zdotc(hilbert,w,v_o));
+	       alphas.push_back(alpha2);
+
 	      
 	       //outfile<<"Overlap = "<<zdotc(hilbert,v_o,v_p)<<endl;
 
-	       // Make 2x2 matrix and diagonalize
-	       make_tridiagonal_matrix_and_diagonalize(2,alphas,betas,t_mat,eigs,t_eigenvecs);
+	       // Make 3x3 matrix and diagonalize
+	       make_tridiagonal_matrix_and_diagonalize(3,alphas,betas,t_mat,eigs,t_eigenvecs);
 	       outfile<<boost::format("#, Cycle, Lowest eigenvalue %3i %+.15f") %cycle %eigs[0]<<endl;
 	       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
 	       outfile.flush();
 
-	       // Now find the linear combination of v_p and v_o that minimizes the energy. Call this linear combination v_p and cycle
+	       // Now find the linear combination of v_p and v_o and v_n that minimizes the energy. Call this linear combination v_p and cycle
 	       complex<double> c_p=t_eigenvecs(0,0);
 	       complex<double> c_o=t_eigenvecs(1,0);
+	       complex<double> c_n=t_eigenvecs(2,0);
 	       //outfile<<"Norm = "<<conj(c_p)*c_p + conj(c_o)*c_o<<endl;
 	       # pragma omp parallel for
 	       for (int64_t i=0;i<hilbert; i++)
 	       {
-			w[i]=(c_p*v_p[i]) + (c_o*v_o[i]); 
+			w[i]=(c_p*v_p[i]) + (c_o*v_o[i]) + (c_n*v_n[i]); 
 	       }
 	       equatek(w,v_p);  // In principle, need to normalize as transformation is unitary. Save the lowest energy vector as v_p
 	       normalize(v_p);  // Seems like we need this else we have issues of roundoff
-	       zscalk(hilbert,0.0,v_o); // Done with v_o - set it to zero so that it can be used the next time
+	       //zscalk(hilbert,0.0,v_o); // Done with v_o - set it to zero so that it can be used the next time
+	       //zscalk(hilbert,0.0,v_n); // Done with v_n - set it to zero so that it can be used the next time
 	       zscalk(hilbert,0.0,w); // Done with w - set it to zero so that it can be used the next time
+	       if (abs(abs(c_p)-1)<1.0e-14 and abs(abs(c_o)-0)<1.0e-14) cycle=num_cycles;
 	   }
 	   outfile.close();
 	   w.clear();
 	   v_o.clear();
+	   v_n.clear();
 	   // Measurements on the ground state
 	   perform_one_spin_measurements(v_p, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
 	   perform_two_spin_measurements(v_p, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
