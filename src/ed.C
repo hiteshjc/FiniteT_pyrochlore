@@ -16,6 +16,7 @@ void make_basis(std::vector< std::vector<int> > &maps,
    int64_t fhilbert=reps.size();
    hilbert=0;
    spin_dets.clear();
+   spin_dets.shrink_to_fit();
    #pragma omp parallel for 
    for (int64_t i=0;i<fhilbert;i++)
    {
@@ -557,50 +558,79 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
    // Ground state algorithm using two Krylov vectors only 
    if (analysis=="gs")
    {
-	   std::vector< complex<double> > v_n(hilbert);
+	   std::vector< complex<double> > v_1(hilbert);
+	   std::vector< complex<double> > v_2(hilbert);
+	   std::vector< complex<double> > v_3(hilbert);
 	   //num_cycles=min(num_cycles,int(hilbert));
 	   outfile<<"(GS) num_cycles = "<<num_cycles<<endl;
 	   for (int cycle=0;cycle<num_cycles;cycle++)
 	   {
 	       initialize_alphas_betas(alphas,betas,beta);
-	       // Act H on v_p  to get w
+	       // Act H on v_p  to get w and alphap
 	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
-	       complex<double> alpha0=conj(zdotc(hilbert,w,v_p));
-	       alphas.push_back(alpha0);
+	       complex<double> alphap=conj(zdotc(hilbert,w,v_p));
+	       alphas.push_back(alphap);
 
 	       // Use the w to obtain v_o 
-	       zaxpyk(hilbert,-alpha0,v_p,w);
+	       zaxpyk(hilbert,-alphap,v_p,w);
 	       beta=sqrt(zdotc(hilbert,w,w));
 	       betas.push_back(beta);
 	       equatek(w,v_o);
 	       zscalk(hilbert,1.0/beta,v_o);
 	       zscalk(hilbert,0.0,w); // Done with w, set it zero so that it can be used the next time
 
-	       // Act H on v_o  to get w and alpha1
+	       // Act H on v_o  to get w and alpha0
 	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_o,w);
        	       zaxpyk(hilbert,-beta,v_p,w);
-	       complex<double> alpha1=conj(zdotc(hilbert,w,v_o));
-	       alphas.push_back(alpha1);
+	       complex<double> alpha0=conj(zdotc(hilbert,w,v_o));
+	       alphas.push_back(alpha0);
 
-
-	       // Use the w to obtain v_n
-       	       zaxpyk(hilbert,-alpha1,v_o,w);
+	       // Use the w to obtain v_1
+       	       zaxpyk(hilbert,-alpha0,v_o,w);
 	       beta=sqrt(zdotc(hilbert,w,w));
 	       betas.push_back(beta);
-	       equatek(w,v_n);
-	       zscalk(hilbert,1.0/beta,v_n);
+	       equatek(w,v_1);
+	       zscalk(hilbert,1.0/beta,v_1);
 	       zscalk(hilbert,0.0,w); // Done with w - set it to zero so that it can be used the next time
 	       
-	       // Act H on v_n  to get w and alpha2
-	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_n,w);
-	       complex<double> alpha2=conj(zdotc(hilbert,w,v_o));
+	       // Act H on v_1  to get w and alpha1
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_1,w);
+       	       zaxpyk(hilbert,-beta,v_o,w);
+	       complex<double> alpha1=conj(zdotc(hilbert,w,v_1));
+	       alphas.push_back(alpha1);
+
+	       // Use the w to obtain v_2
+	       zaxpyk(hilbert,-alpha1,v_1,w);
+	       beta=sqrt(zdotc(hilbert,w,w));
+	       betas.push_back(beta);
+	       equatek(w,v_2);
+	       zscalk(hilbert,1.0/beta,v_2);
+	       zscalk(hilbert,0.0,w); // Done with w, set it zero so that it can be used the next time
+	       
+	       // Act H on v_2  to get w and alpha2
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_2,w);
+       	       zaxpyk(hilbert,-beta,v_1,w);
+	       complex<double> alpha2=conj(zdotc(hilbert,w,v_2));
 	       alphas.push_back(alpha2);
+
+	       // Use the w to obtain v_3
+	       zaxpyk(hilbert,-alpha2,v_2,w);
+	       beta=sqrt(zdotc(hilbert,w,w));
+	       betas.push_back(beta);
+	       equatek(w,v_3);
+	       zscalk(hilbert,1.0/beta,v_3);
+	       zscalk(hilbert,0.0,w); // Done with w, set it zero so that it can be used the next time
+	      
+	       // Act H on v_3  to get w and alpha3
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_3,w);
+	       complex<double> alpha3=conj(zdotc(hilbert,w,v_3));
+	       alphas.push_back(alpha3);
 
 	      
 	       //outfile<<"Overlap = "<<zdotc(hilbert,v_o,v_p)<<endl;
 
 	       // Make 3x3 matrix and diagonalize
-	       make_tridiagonal_matrix_and_diagonalize(3,alphas,betas,t_mat,eigs,t_eigenvecs);
+	       make_tridiagonal_matrix_and_diagonalize(5,alphas,betas,t_mat,eigs,t_eigenvecs);
 	       outfile<<boost::format("#, Cycle, Lowest eigenvalue %3i %+.15f") %cycle %eigs[0]<<endl;
 	       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
 	       outfile.flush();
@@ -608,12 +638,14 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	       // Now find the linear combination of v_p and v_o and v_n that minimizes the energy. Call this linear combination v_p and cycle
 	       complex<double> c_p=t_eigenvecs(0,0);
 	       complex<double> c_o=t_eigenvecs(1,0);
-	       complex<double> c_n=t_eigenvecs(2,0);
+	       complex<double> c_1=t_eigenvecs(2,0);
+	       complex<double> c_2=t_eigenvecs(3,0);
+	       complex<double> c_3=t_eigenvecs(4,0);
 	       //outfile<<"Norm = "<<conj(c_p)*c_p + conj(c_o)*c_o<<endl;
 	       # pragma omp parallel for
 	       for (int64_t i=0;i<hilbert; i++)
 	       {
-			w[i]=(c_p*v_p[i]) + (c_o*v_o[i]) + (c_n*v_n[i]); 
+			w[i]=(c_p*v_p[i]) + (c_o*v_o[i]) + (c_1*v_1[i]) + (c_2*v_2[i]) + (c_3*v_3[i]); 
 	       }
 	       equatek(w,v_p);  // In principle, need to normalize as transformation is unitary. Save the lowest energy vector as v_p
 	       normalize(v_p);  // Seems like we need this else we have issues of roundoff
@@ -623,9 +655,11 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	       if (abs(abs(c_p)-1)<1.0e-14 and abs(abs(c_o)-0)<1.0e-14) cycle=num_cycles;
 	   }
 	   outfile.close();
-	   w.clear();
-	   v_o.clear();
-	   v_n.clear();
+	   w.clear();w.shrink_to_fit();
+	   v_o.clear();v_o.shrink_to_fit();
+	   v_1.clear();v_1.shrink_to_fit();
+	   v_2.clear();v_2.shrink_to_fit();
+	   v_3.clear();v_3.shrink_to_fit();
 	   // Measurements on the ground state
 	   perform_one_spin_measurements(v_p, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
 	   perform_two_spin_measurements(v_p, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
@@ -721,6 +755,7 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
 		outfile<<boost::format("%3i  %+.15f  %+.15f  %+.15f") %m %real(sx[m]) %real(sy[m]) %real(sz[m])<<endl;
 	}
 	outfile.close();
+	w.clear();w.shrink_to_fit();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -871,6 +906,7 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 		}
 	}
 	outfile.close();
+	w.clear();w.shrink_to_fit();
 }
 
 /*
