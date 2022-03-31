@@ -977,15 +977,30 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 			{
 				int site1=groups[m][ind][0];
 				int site2=groups[m][ind][1];
-				if (which==0) {sxsx(site1,site2)=value; sxsx(site2,site1)=value;}
-				if (which==1) {sxsy(site1,site2)=value; sysx(site2,site1)=value;}
-				if (which==2) {sxsz(site1,site2)=value; szsx(site2,site1)=value;}
-				if (which==3) {sysx(site1,site2)=value; sxsy(site2,site1)=value;}
-				if (which==4) {sysy(site1,site2)=value; sysy(site2,site1)=value;}
-				if (which==5) {sysz(site1,site2)=value; szsy(site2,site1)=value;}
-				if (which==6) {szsx(site1,site2)=value; sxsz(site2,site1)=value;}
-				if (which==7) {szsy(site1,site2)=value; sysz(site2,site1)=value;}
-				if (which==8) {szsz(site1,site2)=value; szsz(site2,site1)=value;}
+				if (site1!=site2)
+				{
+					if (which==0) {sxsx(site1,site2)=value; sxsx(site2,site1)=value;}
+					if (which==1) {sxsy(site1,site2)=value; sysx(site2,site1)=value;}
+					if (which==2) {sxsz(site1,site2)=value; szsx(site2,site1)=value;}
+					if (which==3) {sysx(site1,site2)=value; sxsy(site2,site1)=value;}
+					if (which==4) {sysy(site1,site2)=value; sysy(site2,site1)=value;}
+					if (which==5) {sysz(site1,site2)=value; szsy(site2,site1)=value;}
+					if (which==6) {szsx(site1,site2)=value; sxsz(site2,site1)=value;}
+					if (which==7) {szsy(site1,site2)=value; sysz(site2,site1)=value;}
+					if (which==8) {szsz(site1,site2)=value; szsz(site2,site1)=value;}
+				}
+				else
+				{
+					if (which==0) {sxsx(site1,site2)=value;}
+					if (which==1) {sxsy(site1,site2)=value;}
+					if (which==2) {sxsz(site1,site2)=value;}
+					if (which==3) {sysx(site1,site2)=value;}
+					if (which==4) {sysy(site1,site2)=value;}
+					if (which==5) {sysz(site1,site2)=value;}
+					if (which==6) {szsx(site1,site2)=value;}
+					if (which==7) {szsy(site1,site2)=value;}
+					if (which==8) {szsz(site1,site2)=value;}
+				}
 			}
 		}
 	}
