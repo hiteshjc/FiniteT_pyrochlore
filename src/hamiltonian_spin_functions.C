@@ -143,6 +143,55 @@ void symmetrized_sxsx(std::vector< std::vector<int> > &maps, std::vector< std::v
 	ctr=new_spin_dets.size();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_sxsy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymbonds.size();i++){calc_hints_sxsy(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_sxsz(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymbonds.size();i++){calc_hints_sxsz(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_sysx(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymbonds.size();i++){calc_hints_sysx(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_sysy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymbonds.size();i++){calc_hints_sysy(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_sysz(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymbonds.size();i++){calc_hints_sysz(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_szsx(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymbonds.size();i++){calc_hints_szsx(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_szsy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymbonds.size();i++){calc_hints_szsy(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void symmetrized_szsz(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
+{
+	for (int i=0;i<setofsymbonds.size();i++){calc_hints_szsz(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
+	ctr=new_spin_dets.size();
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void symmetrized_sxsy_plus_sysx(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
 {
@@ -156,21 +205,9 @@ void symmetrized_sxsz_plus_szsx(std::vector< std::vector<int> > &maps, std::vect
 	ctr=new_spin_dets.size();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void symmetrized_sysy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
-{
-	for (int i=0;i<setofsymbonds.size();i++){calc_hints_sysy(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
-	ctr=new_spin_dets.size();
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
 void symmetrized_sysz_plus_szsy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
 {
 	for (int i=0;i<setofsymbonds.size();i++){calc_hints_sysz_plus_szsy(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
-	ctr=new_spin_dets.size();
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void symmetrized_szsz(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr)
-{
-	for (int i=0;i<setofsymbonds.size();i++){calc_hints_szsz(1.0,setofsymbonds[i][0],setofsymbonds[i][1],spin_det,new_spin_dets,hints_list);}
 	ctr=new_spin_dets.size();
 }
 
@@ -331,6 +368,26 @@ void calc_hints_sxsy(double coupling,
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+void calc_hints_sysx(double coupling, 
+                         int first, int second, 
+                         int64_t const &spin_det,
+                         std::vector<int64_t> &new_spin_dets,
+                         std::vector< complex<double> > &hints_list)
+{
+	int64_t new_state=spin_det;
+	int a=btest64(spin_det,first);
+	if (first!=second)
+	{
+		calc_hints_sxsy(coupling, second, first, spin_det,     // Just reverse the order, operators commute
+                         new_spin_dets, hints_list);
+	}
+	else
+	{
+		new_spin_dets.push_back(new_state);
+		hints_list.push_back(0.5*coupling*(a-0.5)*complex<double>(0.0,-1.0));
+	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
 void calc_hints_sxsy_plus_sysx(double coupling, 
                          int first, int second, 
                          int64_t const &spin_det,
@@ -376,6 +433,28 @@ void calc_hints_sxsz(double coupling,
 	else if (a==1) {new_state=ibclr64(spin_det,first);}
 	new_spin_dets.push_back(new_state);
 	hints_list.push_back(0.5*coupling*(b-0.5));
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void calc_hints_szsx(double coupling, 
+                         int first, int second, 
+                         int64_t const &spin_det,
+                         std::vector<int64_t> &new_spin_dets,
+                         std::vector< complex<double> > &hints_list)
+{
+	int64_t new_state;
+	if (first!=second) 
+	{
+		calc_hints_sxsz(coupling, second, first, spin_det, new_spin_dets, hints_list);
+	}
+	else
+	{
+        	int a=btest64(spin_det,first);
+		if (a==0) {new_state=ibset64(spin_det,first);}
+		else if (a==1) {new_state=ibclr64(spin_det,first);}
+		new_spin_dets.push_back(new_state);
+		hints_list.push_back(-0.5*coupling*(a-0.5));
+	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void calc_hints_sxsz_plus_szsx(double coupling, 
@@ -522,6 +601,31 @@ void calc_hints_sysz(double coupling,
 	else if (a==1) {new_state=ibclr64(spin_det,first);factor=-1.0;}
 	new_spin_dets.push_back(new_state);
 	hints_list.push_back(0.5*factor*complex<double>(0.0,-1.0)*coupling*(b-0.5));
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void calc_hints_szsy(double coupling, 
+                         int first, int second, 
+                         int64_t const &spin_det,
+                         std::vector<int64_t> &new_spin_dets,
+                         std::vector< complex<double> > &hints_list)
+{
+	int64_t new_state;
+        
+	if (first!=second)
+	{
+		calc_hints_sysz(coupling, second, first, spin_det, new_spin_dets, hints_list);
+
+	}
+	else
+	{
+		int a=btest64(spin_det,first); 
+		double factor=1.0;
+
+		if (a==0) {new_state=ibset64(spin_det,first);factor=1.0;}
+		else if (a==1) {new_state=ibclr64(spin_det,first);factor=-1.0;}
+		new_spin_dets.push_back(new_state);
+		hints_list.push_back(-0.5*factor*complex<double>(0.0,-1.0)*coupling*(a-0.5));
+	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void calc_hints_szsz(double coupling, 

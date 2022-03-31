@@ -555,14 +555,74 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 	       }
 	   }
    }
-   // Ground state algorithm using two Krylov vectors only 
+   // GS algorithm 
    if (analysis=="gs")
+   { 
+	   std::vector< complex<double> > gs(hilbert);
+	   equatek(v_p,gs);
+	   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
+	   iterations=min(iterations,int(hilbert));
+	   outfile<<"(GS) Iterations = "<<iterations<<endl;
+	   for (int it=0;it<iterations;it++)
+	   {
+	       time_t start;
+	       time (&start);
+	       // Act H on v  to get w
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
+	       // Lanczos orthogonalization, update beta and also the alphas and betas arrays. Also update v_p, v_o, w 
+	       Lanczos_step_update(beta, alphas, betas, v_p, v_o, w); // use the current beta and then update it 
+	       time_t end;
+	       time (&end);
+	       double dif=difftime(end,start);
+	       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
+	       outfile<<"================================================================="<<endl;
+	       outfile.flush();
+	      
+	       // Make tridiagonal matrix and diagonalize every iteration 
+	       if (it %1 ==0) 
+	       {
+		       make_tridiagonal_matrix_and_diagonalize(it+1,alphas,betas,t_mat,eigs,t_eigenvecs);
+		       outfile<<boost::format("#, Iteration, Lowest eigenvalue %3i %+.15f") %it %eigs[0]<<endl;
+		       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
+	       }
+	   }
+	   outfile<<"Done with tridiagonal construction, now making GS vector"<<endl;
+	   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
+	   equatek(gs,v_p);
+           complex<double> coeff=t_eigenvecs(0,0);
+	   zscalk(hilbert,coeff,gs);
+       	   zscalk(hilbert,0.0,v_o);
+       	   zscalk(hilbert,0.0,w);
+	   for (int it=0;it<iterations;it++)
+	   {
+	       time_t start;
+	       time (&start);
+	       // Act H on v  to get w
+	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
+	       // Lanczos orthogonalization, update beta and also the alphas and betas arrays. Also update v_p, v_o, w 
+	       Lanczos_step_update(beta, alphas, betas, v_p, v_o, w); // use the current beta and then update it 
+	       time_t end;
+	       time (&end);
+	       double dif=difftime(end,start);
+	       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
+	       outfile<<"================================================================="<<endl;
+	       outfile.flush();
+	       complex<double> coeff=t_eigenvecs(it+1,0);
+	       zaxpyk(hilbert,coeff,v_p,gs);
+	   }
+	   outfile<<"Done with GS vector construction, now measuring"<<endl;
+
+	   perform_one_spin_measurements(gs, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
+	   perform_two_spin_measurements(gs, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
+   }
+   // Ground state algorithm using five Krylov vectors only 
+   if (analysis=="gs_slow")
    {
 	   std::vector< complex<double> > v_1(hilbert);
 	   std::vector< complex<double> > v_2(hilbert);
 	   std::vector< complex<double> > v_3(hilbert);
 	   //num_cycles=min(num_cycles,int(hilbert));
-	   outfile<<"(GS) num_cycles = "<<num_cycles<<endl;
+	   outfile<<"(GS-using five Krylov) num_cycles = "<<num_cycles<<endl;
 	   for (int cycle=0;cycle<num_cycles;cycle++)
 	   {
 	       initialize_alphas_betas(alphas,betas,beta);
@@ -770,8 +830,21 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 	int64_t hilbert=spin_dets.size();
    	int     nsites=maps[0].size();
    	std::vector<complex<double> > w(hilbert);
-   	Matrix sxsx(nsites,nsites), sxsy_plus_sysx(nsites,nsites), sxsz_plus_szsx(nsites,nsites), sysy(nsites,nsites), sysz_plus_szsy(nsites,nsites), szsz(nsites,nsites);
-        ofstream outfile;
+   	Matrix sxsx(nsites,nsites), sxsy(nsites,nsites), sxsz(nsites,nsites), sysx(nsites,nsites), sysy(nsites,nsites), sysz(nsites,nsites), szsx(nsites,nsites), szsy(nsites,nsites), szsz(nsites,nsites);
+        #pragma omp parallel for
+	for (int i=0;i<nsites*nsites;i++)
+	{
+		sxsx[i]=0.0;
+		sxsy[i]=0.0;
+		sxsz[i]=0.0;
+		sysx[i]=0.0;
+		sysy[i]=0.0;
+		sysz[i]=0.0;
+		szsx[i]=0.0;
+		szsy[i]=0.0;
+		szsz[i]=0.0;
+	}
+	ofstream outfile;
         const char *cstr = (sp.outfile).c_str();
         outfile.open(cstr, ofstream::app);
 	std::vector< std::vector< std::vector<int> > > groups;
@@ -836,7 +909,7 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 	outfile<<"Numgroups = "<<numgroups<<endl;
 	outfile<<"Numbonds  = "<<numbonds<<endl;
 
-	for (int which=0;which<6;which++)
+	for (int which=0;which<9;which++)
 	{
 		for (int m=0;m<numgroups;m++)
 		{
@@ -850,11 +923,14 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 				int64_t orig=spin_dets[i];
 				int nconns;
 				if (which==0) symmetrized_sxsx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
-				if (which==1) symmetrized_sxsy_plus_sysx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
-				if (which==2) symmetrized_sxsz_plus_szsx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
-				if (which==3) symmetrized_sysy(maps,groups[m],orig,new_spin_dets,hints, nconns); 
-				if (which==4) symmetrized_sysz_plus_szsy(maps,groups[m],orig,new_spin_dets,hints, nconns); 
-				if (which==5) symmetrized_szsz(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+				if (which==1) symmetrized_sxsy(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+				if (which==2) symmetrized_sxsz(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+				if (which==3) symmetrized_sysx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+				if (which==4) symmetrized_sysy(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+				if (which==5) symmetrized_sysz(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+				if (which==6) symmetrized_szsx(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+				if (which==7) symmetrized_szsy(maps,groups[m],orig,new_spin_dets,hints, nconns); 
+				if (which==8) symmetrized_szsz(maps,groups[m],orig,new_spin_dets,hints, nconns); 
 				int repeatket=norms[orig]-'0';
 				complex<double> hint;
 				double invrepeatket=sqrt(1.0/double(repeatket));
@@ -875,34 +951,40 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 				 }
 			}
 			if (which==0) outfile<<"Finished Computing SxSxV for group m = "<<m<<endl;
-			if (which==1) outfile<<"Finished Computing (SxSy + SySx) V for group m = "<<m<<endl;
-			if (which==2) outfile<<"Finished Computing (SxSz + SzSx) V for group m = "<<m<<endl;
-			if (which==3) outfile<<"Finished Computing SySyV for group m = "<<m<<endl;
-			if (which==4) outfile<<"Finished Computing (SySz + SzSy) V for group m = "<<m<<endl;
-			if (which==5) outfile<<"Finished Computing SzSzV for group m = "<<m<<endl;
+			if (which==1) outfile<<"Finished Computing SxSyV for group m = "<<m<<endl;
+			if (which==2) outfile<<"Finished Computing SxSzV for group m = "<<m<<endl;
+			if (which==3) outfile<<"Finished Computing SySxV for group m = "<<m<<endl;
+			if (which==4) outfile<<"Finished Computing SySyV for group m = "<<m<<endl;
+			if (which==5) outfile<<"Finished Computing SySzV for group m = "<<m<<endl;
+			if (which==6) outfile<<"Finished Computing SzSxV for group m = "<<m<<endl;
+			if (which==7) outfile<<"Finished Computing SzSyV for group m = "<<m<<endl;
+			if (which==8) outfile<<"Finished Computing SzSzV for group m = "<<m<<endl;
 			complex<double> value=zdotc(hilbert,vec,w)/double(groups[m].size());
 			for (int ind=0;ind<groups[m].size();ind++) 
 			{
 				int site1=groups[m][ind][0];
 				int site2=groups[m][ind][1];
 				if (which==0) {sxsx(site1,site2)=value; sxsx(site2,site1)=value;}
-				if (which==1) {sxsy_plus_sysx(site1,site2)=value; sxsy_plus_sysx(site2,site1)=value;}
-				if (which==2) {sxsz_plus_szsx(site1,site2)=value; sxsz_plus_szsx(site2,site1)=value;}
-				if (which==3) {sysy(site1,site2)=value; sysy(site2,site1)=value;}
-				if (which==4) {sysz_plus_szsy(site1,site2)=value; sysz_plus_szsy(site2,site1)=value;}
-				if (which==5) {szsz(site1,site2)=value; szsz(site2,site1)=value;}
+				if (which==1) {sxsy(site1,site2)=value; sysx(site2,site1)=value;}
+				if (which==2) {sxsz(site1,site2)=value; szsx(site2,site1)=value;}
+				if (which==3) {sysx(site1,site2)=value; sxsy(site2,site1)=value;}
+				if (which==4) {sysy(site1,site2)=value; sysy(site2,site1)=value;}
+				if (which==5) {sysz(site1,site2)=value; szsy(site2,site1)=value;}
+				if (which==6) {szsx(site1,site2)=value; sxsz(site2,site1)=value;}
+				if (which==7) {szsy(site1,site2)=value; sysz(site2,site1)=value;}
+				if (which==8) {szsz(site1,site2)=value; szsz(site2,site1)=value;}
 			}
 		}
 	}
 
 	outfile<<"========================================================================================================================================================================="<<endl;
-	outfile<<" m     n         SmxSnx         SmxSny+SmySnx         SmxSnz+SmzSnx         SmySny          SmySnz+SmzSny           SmzSnz    "<<endl;
+	outfile<<" m     n         SmxSnx         SmxSny         SmxSnz         SmySnx          SmySny         SmySnz          SmzSnx         SmzSny           SmzSnz    "<<endl;
 	outfile<<"========================================================================================================================================================================="<<endl;
 	for (int m=0;m<nsites;m++)
 	{
 		for (int n=0;n<nsites;n++)
 		{	
-			outfile<<boost::format("%3i  %3i  %+.15f  %+.15f  %+.15f  %+.15f  %+.15f  %+.15f") %m %n %real(sxsx(m,n)) %real(sxsy_plus_sysx(m,n)) %real(sxsz_plus_szsx(m,n)) %real(sysy(m,n)) %real(sysz_plus_szsy(m,n)) %real(szsz(m,n))<<endl;
+			outfile<<boost::format("%3i  %3i  %+.15f  %+.15f  %+.15f  %+.15f  %+.15f  %+.15f  %+.15f  %+.15f  %+.15f") %m %n %sxsx(m,n) %sxsy(m,n) %sxsz(m,n) %sysx(m,n) %sysy(m,n) %sysz(m,n) %szsx(m,n) %szsy(m,n) %szsz(m,n)<<endl;
 		}
 	}
 	outfile.close();
