@@ -13,24 +13,33 @@ void symmetrized_sy(std::vector< std::vector<int> > &maps, std::vector<int> &set
 void symmetrized_sz(std::vector< std::vector<int> > &maps, std::vector<int> &setofsymsites, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
 
 void symmetrized_sxsx(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+void symmetrized_sxsy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+void symmetrized_sxsz(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
 void symmetrized_sxsy_plus_sysx(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
 void symmetrized_sxsz_plus_szsx(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+void symmetrized_sysx(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
 void symmetrized_sysy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+void symmetrized_sysz(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
 void symmetrized_sysz_plus_szsy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+void symmetrized_szsx(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
+void symmetrized_szsy(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
 void symmetrized_szsz(std::vector< std::vector<int> > &maps, std::vector< std::vector<int> > &setofsymbonds, int64_t spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list, int &ctr);
 
 void calc_hints_sx(double coupling, int site, int64_t const &spin_det,std::vector<int64_t> &new_spin_dets,std::vector< complex<double> > &hints_list);
 void calc_hints_sy(double coupling, int site, int64_t const &spin_det,std::vector<int64_t> &new_spin_dets,std::vector< complex<double> > &hints_list);
 void calc_hints_sz(double coupling, int site, int64_t const &spin_det,std::vector<int64_t> &new_spin_dets,std::vector< complex<double> > &hints_list);
 void calc_hints_sxsx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
-void calc_hints_sxsy_plus_sysx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
 void calc_hints_sxsy(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
-void calc_hints_sxsz_plus_szsx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
 void calc_hints_sxsz(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_sysx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
 void calc_hints_sysy(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
-void calc_hints_sysz_plus_szsy(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
 void calc_hints_sysz(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_szsx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_szsy(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
 void calc_hints_szsz(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_sxsy_plus_sysx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_sxsz_plus_szsx(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
+void calc_hints_sysz_plus_szsy(double coupling, int first, int second, int64_t const &spin_det, std::vector<int64_t> &new_spin_dets, std::vector< complex<double> > &hints_list);
 
 void calc_hints_xyyzzx(double coupling, 
                    int first, int second, int third, int fourth, int fifth, int sixth, 
