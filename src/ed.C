@@ -586,36 +586,49 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
 		       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
 	       }
 	   }
-	   outfile<<"Done with tridiagonal construction, now making GS vector"<<endl;
+	   outfile<<"Done with tridiagonal construction, now making GS vector (Repeat Lanczos due to memory issues! But use previously computed information)"<<endl;
+	   complex<double> norm=0.0;
+	   for (int i=0;i<alphas.size();i++) norm+=(abs(t_eigenvecs(i,0))*abs(t_eigenvecs(i,0)));
+	   outfile<<"Norm = "<<norm<<endl;
 	   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
 	   equatek(gs,v_p);
-           complex<double> coeff=t_eigenvecs(0,0);
-	   zscalk(hilbert,coeff,gs);
+	   zscalk(hilbert,0.0,gs);
        	   zscalk(hilbert,0.0,v_o);
        	   zscalk(hilbert,0.0,w);
 	   for (int it=0;it<iterations;it++)
 	   {
+	       complex<double> coeff=t_eigenvecs(it,0); // We have the coeffs from the previous run
+	       zaxpyk(hilbert,coeff,v_p,gs); // Update ground state
 	       time_t start;
 	       time (&start);
 	       // Act H on v  to get w
 	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
 	       // Lanczos orthogonalization, update beta and also the alphas and betas arrays. Also update v_p, v_o, w 
 	       Lanczos_step_update(beta, alphas, betas, v_p, v_o, w); // use the current beta and then update it 
+	       outfile<<"Overlap of current vector with previous"<<zdotc(hilbert, v_o,v_p)<<endl;
 	       time_t end;
 	       time (&end);
 	       double dif=difftime(end,start);
 	       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
 	       outfile<<"================================================================="<<endl;
 	       outfile.flush();
-	       complex<double> coeff=t_eigenvecs(it+1,0);
-	       zaxpyk(hilbert,coeff,v_p,gs);
+	       //complex<double> coeff=t_eigenvecs(it+1,0); // We have the coeffs from the previous run
+	       //zaxpyk(hilbert,coeff,v_p,gs); // Update ground state
 	   }
+	   //normalize(gs);
 	   outfile<<"Done with GS vector construction, now measuring"<<endl;
+	  
+	   // Check energy
+       	   zscalk(hilbert,0.0,w);
+	   actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,gs,w);
+	   outfile<<"================================================================="<<endl;
+	   outfile<<boost::format("GS Energy = %+.15f") %real(zdotc(hilbert,gs,w))<<endl;
+	   outfile<<"================================================================="<<endl;
 
 	   perform_one_spin_measurements(gs, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
 	   perform_two_spin_measurements(gs, spin_dets, maps, characters, reps, locreps, ireps, norms, sp);
    }
-   // Ground state algorithm using five Krylov vectors only 
+   // Ground state algorithm using five Krylov vectors only - this algorithm will be much slower but orthogonalization is NOT an issue 
    if (analysis=="gs_slow")
    {
 	   std::vector< complex<double> > v_1(hilbert);
