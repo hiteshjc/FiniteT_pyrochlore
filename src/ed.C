@@ -825,7 +825,7 @@ void perform_one_spin_measurements(std::vector< complex<double> > &vec,
 	outfile<<"==========================================================================="<<endl;
 	for (int m=0;m<nsites;m++)
 	{
-		outfile<<boost::format("%3i  %+.15f  %+.15f  %+.15f") %m %real(sx[m]) %real(sy[m]) %real(sz[m])<<endl;
+		outfile<<boost::format("%3i  %+.15f  %+.15f  %+.15f") %m %sx[m] %sy[m] %sz[m]<<endl;
 	}
 	outfile.close();
 	w.clear();w.shrink_to_fit();
@@ -877,13 +877,13 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 				bond.push_back(maps[i][m]);
 				bond.push_back(maps[i][n]);
 				bool addbond=true;
-				for (int l=0;l<setofsymbonds.size();l++)
+				/*for (int l=0;l<setofsymbonds.size();l++)
 				{
 					if ((bond[0]==setofsymbonds[l][0] and bond[1]==setofsymbonds[l][1]) or (bond[0]==setofsymbonds[l][1] and bond[1]==setofsymbonds[l][0]))
 					{
 						addbond=false;
 					}
-				}
+				}*/
 				if (addbond) {setofsymbonds.push_back(bond);}
 				if (mnew<m) {add=false; i=maps.size();} // This has been accounted elsewhere
 				// If bond is present in a previous group then do not add this group
@@ -892,6 +892,7 @@ void perform_two_spin_measurements(std::vector< complex<double> > &vec,
 					for (int k=0;k<groups[j].size();k++)
 					{
 						if ( (bond[0]==groups[j][k][0] and bond[1]==groups[j][k][1]) or (bond[0]==groups[j][k][1] and bond[1]==groups[j][k][0]))
+						//if ( (bond[0]==groups[j][k][0] and bond[1]==groups[j][k][1]))
 						{
 							k=groups[j].size();
 							//j=groups.size();
