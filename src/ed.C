@@ -557,64 +557,72 @@ void lanczos_sym(Ham &h, Simulation_Params &sp, std::vector<double> &eigs)
    }
    // GS algorithm 
    if (analysis=="gs")
-   { 
+   {
 	   std::vector< complex<double> > gs(hilbert);
-	   equatek(v_p,gs);
-	   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
+	   equatek(v_p,gs); // Very first initialization
+
 	   iterations=min(iterations,int(hilbert));
-	   outfile<<"(GS) Iterations = "<<iterations<<endl;
-	   for (int it=0;it<iterations;it++)
+	   for (int cycle=0;cycle<2;cycle++)
 	   {
-	       time_t start;
-	       time (&start);
-	       // Act H on v  to get w
-	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
-	       // Lanczos orthogonalization, update beta and also the alphas and betas arrays. Also update v_p, v_o, w 
-	       Lanczos_step_update(beta, alphas, betas, v_p, v_o, w); // use the current beta and then update it 
-	       time_t end;
-	       time (&end);
-	       double dif=difftime(end,start);
-	       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
-	       outfile<<"================================================================="<<endl;
-	       outfile.flush();
-	      
-	       // Make tridiagonal matrix and diagonalize every iteration 
-	       if (it %1 ==0) 
-	       {
-		       make_tridiagonal_matrix_and_diagonalize(it+1,alphas,betas,t_mat,eigs,t_eigenvecs);
-		       outfile<<boost::format("#, Iteration, Lowest eigenvalue %3i %+.15f") %it %eigs[0]<<endl;
-		       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
-	       }
-	   }
-	   outfile<<"Done with tridiagonal construction, now making GS vector (Repeat Lanczos due to memory issues! But use previously computed information)"<<endl;
-	   complex<double> norm=0.0;
-	   for (int i=0;i<alphas.size();i++) norm+=(abs(t_eigenvecs(i,0))*abs(t_eigenvecs(i,0)));
-	   outfile<<"Norm = "<<norm<<endl;
-	   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
-	   equatek(gs,v_p);
-	   zscalk(hilbert,0.0,gs);
-       	   zscalk(hilbert,0.0,v_o);
-       	   zscalk(hilbert,0.0,w);
-	   for (int it=0;it<iterations;it++)
-	   {
-	       complex<double> coeff=t_eigenvecs(it,0); // We have the coeffs from the previous run
-	       zaxpyk(hilbert,coeff,v_p,gs); // Update ground state
-	       time_t start;
-	       time (&start);
-	       // Act H on v  to get w
-	       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
-	       // Lanczos orthogonalization, update beta and also the alphas and betas arrays. Also update v_p, v_o, w 
-	       Lanczos_step_update(beta, alphas, betas, v_p, v_o, w); // use the current beta and then update it 
-	       outfile<<"Overlap of current vector with previous"<<zdotc(hilbert, v_o,v_p)<<endl;
-	       time_t end;
-	       time (&end);
-	       double dif=difftime(end,start);
-	       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
-	       outfile<<"================================================================="<<endl;
-	       outfile.flush();
-	       //complex<double> coeff=t_eigenvecs(it+1,0); // We have the coeffs from the previous run
-	       //zaxpyk(hilbert,coeff,v_p,gs); // Update ground state
-	   }
+	   	   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
+	   	   equatek(gs,v_p);
+       	   	   zscalk(hilbert,0.0,v_o);
+       	   	   zscalk(hilbert,0.0,w);
+		   outfile<<"(GS) Iterations = "<<iterations<<endl;
+		   for (int it=0;it<iterations;it++)
+		   {
+		       time_t start;
+		       time (&start);
+		       // Act H on v  to get w
+		       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
+		       // Lanczos orthogonalization, update beta and also the alphas and betas arrays. Also update v_p, v_o, w 
+		       Lanczos_step_update(beta, alphas, betas, v_p, v_o, w); // use the current beta and then update it 
+		       time_t end;
+		       time (&end);
+		       double dif=difftime(end,start);
+		       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
+		       outfile<<"================================================================="<<endl;
+		       outfile.flush();
+		      
+		       // Make tridiagonal matrix and diagonalize every iteration 
+		       if (it %1 ==0) 
+		       {
+			       make_tridiagonal_matrix_and_diagonalize(it+1,alphas,betas,t_mat,eigs,t_eigenvecs);
+			       outfile<<boost::format("# Cycle, Iteration, Lowest eigenvalue %3i %3i %+.15f") %cycle %it %eigs[0]<<endl;
+			       for (int ne=0;ne<eigs.size();ne++) outfile<<boost::format("Energy = %+.15f Matrix el = %+.15f , %+.15f") %eigs[ne] %real(t_eigenvecs(0,ne)) %imag(t_eigenvecs(0,ne))<<endl;
+		       }
+		   }
+		   outfile<<"Done with tridiagonal construction, now making GS vector (Repeat Lanczos due to memory issues! But use previously computed information)"<<endl;
+		   complex<double> norm=0.0;
+		   for (int i=0;i<alphas.size();i++) norm+=(abs(t_eigenvecs(i,0))*abs(t_eigenvecs(i,0)));
+		   outfile<<"Norm = "<<norm<<endl;
+		   initialize_alphas_betas(alphas,betas,beta);  // initial beta will be zero
+		   equatek(gs,v_p);
+		   zscalk(hilbert,0.0,gs);
+		   zscalk(hilbert,0.0,v_o);
+		   zscalk(hilbert,0.0,w);
+		   for (int it=0;it<iterations;it++)
+		   {
+		       complex<double> coeff=t_eigenvecs(it,0); // We have the coeffs from the previous run
+		       zaxpyk(hilbert,coeff,v_p,gs); // Update ground state
+		       time_t start;
+		       time (&start);
+		       // Act H on v  to get w
+		       actHonv(h,spin_dets,characters,reps,locreps,ireps,norms,v_p,w);
+		       // Lanczos orthogonalization, update beta and also the alphas and betas arrays. Also update v_p, v_o, w 
+		       Lanczos_step_update(beta, alphas, betas, v_p, v_o, w); // use the current beta and then update it 
+		       outfile<<"Overlap of current vector with previous"<<zdotc(hilbert, v_o,v_p)<<endl;
+		       time_t end;
+		       time (&end);
+		       double dif=difftime(end,start);
+		       outfile<<"Time to perform Lanczos iteration "<<it<<" was "<<dif<<" seconds"<<endl;
+		       outfile<<"================================================================="<<endl;
+		       outfile.flush();
+		       //complex<double> coeff=t_eigenvecs(it+1,0); // We have the coeffs from the previous run
+		       //zaxpyk(hilbert,coeff,v_p,gs); // Update ground state
+		   }
+		   normalize(gs);  // Ideally it should be normalized but in practice numerical roundoff builds up
+           }
 	   //normalize(gs);
 	   outfile<<"Done with GS vector construction, now measuring"<<endl;
 	  

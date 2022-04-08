@@ -58,34 +58,10 @@ int main(int argc, char *argv[])
     search_for(string("hamiltonian"),filename,hamiltonian,ham_found);
     if (ham_found) 
     {
-        if (hamiltonian.compare("ross")==0)
-	{
-	    outfile<<"Setting up Ross model"<<endl;
-            ross_setup(filename,ross);outfile<<endl;
-            ham=ross.clone();
-	    outfile<<"Ross setup completed"<<endl;
-	}
-        else if (hamiltonian.compare("ybmg")==0)
-	{
-	    outfile<<"Setting up Ybmg model"<<endl;
-            ybmg_setup(filename,ybmg);outfile<<endl;
-            ham=ybmg.clone();
-	    outfile<<"Ybmg setup completed"<<endl;
-	}
-        else if (hamiltonian.compare("ybmg_sym")==0)
-	{
-	    outfile<<"Setting up Ybmg model with symmetries"<<endl;
-            ybmg_sym_setup(filename,ybmg);outfile<<endl;
-	    outfile<<"N sites Ybmg before clone = "<<ybmg.num_sites<<endl;
-            ham=ybmg.clone();
-	    outfile<<"N sites Ybmg after clone = "<<(*ham).num_sites<<endl;
-	    outfile<<"Ybmg setup with symmetries completed"<<endl;
-	    outfile.flush();
-	}
-        else if (hamiltonian.compare("ross_sym")==0)
+        if (hamiltonian.compare("ross_sym")==0)
 	{
 	    outfile<<"Setting up Ross model with symmetries"<<endl;
-            ross_sym_setup(filename,ross);outfile<<endl;
+            ross_sym_setup(filename,ross,outfilename);outfile<<endl;
 	    outfile<<"N sites Ross before clone = "<<ross.num_sites<<endl;
             ham=ross.clone();
 	    outfile<<"N sites Ross after clone = "<<(*ham).num_sites<<endl;

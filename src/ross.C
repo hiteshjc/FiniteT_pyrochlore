@@ -12,7 +12,7 @@ using namespace std;
 //                                 Ross's MODEL
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-void make_g_mats(double gxy,double gz, std::vector<RMatrix> &gmats)
+void make_g_mats(double gxy,double gz, std::vector<RMatrix> &gmats, string hamtype)
 {
 	gmats.clear();
 	RMatrix gmat0;
@@ -25,24 +25,51 @@ void make_g_mats(double gxy,double gz, std::vector<RMatrix> &gmats)
 	gmat2.resize(3,3);
 	gmat3.resize(3,3);
 
-	double gp=(2.0*gxy+ gz)/3.0;
-	double gm=(gxy - gz)/3.0;
+	if (hamtype=="dipolar_global")
+	{
+		double gp=(2.0*gxy+ gz)/3.0;
+		double gm=(gxy - gz)/3.0;                     // gxy refers to gx=gy
 
-	gmat0(0,0)=gp;gmat0(0,1)=-gm;gmat0(0,2)=-gm;
-	gmat0(1,0)=-gm;gmat0(1,1)=gp;gmat0(1,2)=-gm;
-	gmat0(2,0)=-gm;gmat0(2,1)=-gm;gmat0(2,2)=gp;
+		gmat0(0,0)=gp;gmat0(0,1)=-gm;gmat0(0,2)=-gm;
+		gmat0(1,0)=-gm;gmat0(1,1)=gp;gmat0(1,2)=-gm;
+		gmat0(2,0)=-gm;gmat0(2,1)=-gm;gmat0(2,2)=gp;
 
-	gmat1(0,0)=gp;gmat1(0,1)=gm;gmat1(0,2)=gm;
-	gmat1(1,0)=gm;gmat1(1,1)=gp;gmat1(1,2)=-gm;
-	gmat1(2,0)=gm;gmat1(2,1)=-gm;gmat1(2,2)=gp;
+		gmat1(0,0)=gp;gmat1(0,1)=gm;gmat1(0,2)=gm;
+		gmat1(1,0)=gm;gmat1(1,1)=gp;gmat1(1,2)=-gm;
+		gmat1(2,0)=gm;gmat1(2,1)=-gm;gmat1(2,2)=gp;
 
-	gmat2(0,0)=gp;gmat2(0,1)=gm;gmat2(0,2)=-gm;
-	gmat2(1,0)=gm;gmat2(1,1)=gp;gmat2(1,2)=gm;
-	gmat2(2,0)=-gm;gmat2(2,1)=gm;gmat2(2,2)=gp;
+		gmat2(0,0)=gp;gmat2(0,1)=gm;gmat2(0,2)=-gm;
+		gmat2(1,0)=gm;gmat2(1,1)=gp;gmat2(1,2)=gm;
+		gmat2(2,0)=-gm;gmat2(2,1)=gm;gmat2(2,2)=gp;
 
-	gmat3(0,0)=gp;gmat3(0,1)=-gm;gmat3(0,2)=gm;
-	gmat3(1,0)=-gm;gmat3(1,1)=gp;gmat3(1,2)=gm;
-	gmat3(2,0)=gm;gmat3(2,1)=gm;gmat3(2,2)=gp;
+		gmat3(0,0)=gp;gmat3(0,1)=-gm;gmat3(0,2)=gm;
+		gmat3(1,0)=-gm;gmat3(1,1)=gp;gmat3(1,2)=gm;
+		gmat3(2,0)=gm;gmat3(2,1)=gm;gmat3(2,2)=gp;
+	}
+	
+	if (hamtype=="octupolar_global")
+	{
+		//A Bhardwaj worked these out
+		double gp=(sqrt(2.0)*gxy+ gz)/3.0;
+		double gm=-(gxy/sqrt(2.0) - gz)/3.0;          // gxy is really just gx
+		
+		gmat0(0,0)=gp;gmat0(0,1)=gm;gmat0(0,2)=gm;
+        	gmat0(1,0)=gp;gmat0(1,1)=gm;gmat0(1,2)=gm;
+        	gmat0(2,0)=gp;gmat0(2,1)=gm;gmat0(2,2)=gm;
+
+		gmat1(0,0)=gm;gmat1(0,1)=-gp;gmat1(0,2)=-gm;
+		gmat1(1,0)=-gm;gmat1(1,1)=gp;gmat1(1,2)=gm;
+		gmat1(2,0)=-gm;gmat1(2,1)=gp;gmat1(2,2)=gm;
+
+		gmat2(0,0)=gm;gmat2(0,1)=-gm;gmat2(0,2)=gp;
+		gmat2(1,0)=-gm;gmat2(1,1)=gm;gmat2(1,2)=-gp;
+		gmat2(2,0)=gm;gmat2(2,1)=-gm;gmat2(2,2)=gp;
+
+		gmat3(0,0)=gm;gmat3(0,1)=gm;gmat3(0,2)=-gp;
+		gmat3(1,0)=gm;gmat3(1,1)=gm;gmat3(1,2)=-gp;
+		gmat3(2,0)=-gm;gmat3(2,1)=-gm;gmat3(2,2)=gp;	
+		
+	}
 
 	gmats.push_back(gmat0);
 	gmats.push_back(gmat1);
@@ -52,7 +79,7 @@ void make_g_mats(double gxy,double gz, std::vector<RMatrix> &gmats)
 
 
 void make_J_mats(double J1,double J2,double J3,double J4, 
-		 std::vector<RMatrix> &Jmats)
+		 std::vector<RMatrix> &Jmats, string hamtype)
 {
 	Jmats.clear();
 	RMatrix Jmat01, Jmat10;
@@ -75,53 +102,110 @@ void make_J_mats(double J1,double J2,double J3,double J4,
 	Jmat23.resize(3,3);
 	Jmat32.resize(3,3);
 
-	Jmat01(0,0)=+J2; Jmat01(0,1)=+J4; Jmat01(0,2)=+J4;
-	Jmat01(1,0)=-J4; Jmat01(1,1)=+J1; Jmat01(1,2)=+J3;
-	Jmat01(2,0)=-J4; Jmat01(2,1)=+J3; Jmat01(2,2)=+J1;
+	if (hamtype=="dipolar_global")
+	{
+		Jmat01(0,0)=+J2; Jmat01(0,1)=+J4; Jmat01(0,2)=+J4;
+		Jmat01(1,0)=-J4; Jmat01(1,1)=+J1; Jmat01(1,2)=+J3;
+		Jmat01(2,0)=-J4; Jmat01(2,1)=+J3; Jmat01(2,2)=+J1;
+		
+		Jmat10(0,0)=+J2;  Jmat10(0,1)=-J4; Jmat10(0,2)=-J4;
+		Jmat10(1,0)=+J4;  Jmat10(1,1)=+J1; Jmat10(1,2)=+J3;
+		Jmat10(2,0)=+J4;  Jmat10(2,1)=+J3; Jmat10(2,2)=+J1;
+
+		Jmat02(0,0)=+J1; Jmat02(0,1)=-J4; Jmat02(0,2)=+J3;
+		Jmat02(1,0)=+J4; Jmat02(1,1)=+J2; Jmat02(1,2)=+J4;
+		Jmat02(2,0)=+J3; Jmat02(2,1)=-J4; Jmat02(2,2)=+J1;
+
+		Jmat20(0,0)=+J1;  Jmat20(0,1)=+J4; Jmat20(0,2)=+J3;
+		Jmat20(1,0)=-J4;  Jmat20(1,1)=+J2; Jmat20(1,2)=-J4;
+		Jmat20(2,0)=+J3;  Jmat20(2,1)=+J4; Jmat20(2,2)=+J1;
+
+		Jmat03(0,0)=+J1; Jmat03(0,1)=+J3; Jmat03(0,2)=-J4;
+		Jmat03(1,0)=+J3; Jmat03(1,1)=+J1; Jmat03(1,2)=-J4;
+		Jmat03(2,0)=+J4; Jmat03(2,1)=+J4; Jmat03(2,2)=+J2;
+		
+		Jmat30(0,0)=+J1;  Jmat30(0,1)=+J3; Jmat30(0,2)=+J4;
+		Jmat30(1,0)=+J3;  Jmat30(1,1)=+J1; Jmat30(1,2)=+J4;
+		Jmat30(2,0)=-J4;  Jmat30(2,1)=-J4; Jmat30(2,2)=+J2;
+
+		Jmat12(0,0)=+J1; Jmat12(0,1)=-J3; Jmat12(0,2)=+J4;
+		Jmat12(1,0)=-J3; Jmat12(1,1)=+J1; Jmat12(1,2)=-J4;
+		Jmat12(2,0)=-J4; Jmat12(2,1)=+J4; Jmat12(2,2)=+J2;
+		
+		Jmat21(0,0)=+J1;  Jmat21(0,1)=-J3; Jmat21(0,2)=-J4;
+		Jmat21(1,0)=-J3;  Jmat21(1,1)=+J1; Jmat21(1,2)=+J4;
+		Jmat21(2,0)=+J4;  Jmat21(2,1)=-J4; Jmat21(2,2)=+J2;
+
+		Jmat13(0,0)=+J1; Jmat13(0,1)=+J4; Jmat13(0,2)=-J3;
+		Jmat13(1,0)=-J4; Jmat13(1,1)=+J2; Jmat13(1,2)=+J4;
+		Jmat13(2,0)=-J3; Jmat13(2,1)=-J4; Jmat13(2,2)=+J1;
+
+		Jmat31(0,0)=+J1;  Jmat31(0,1)=-J4; Jmat31(0,2)=-J3;
+		Jmat31(1,0)=+J4;  Jmat31(1,1)=+J2; Jmat31(1,2)=-J4;
+		Jmat31(2,0)=-J3;  Jmat31(2,1)=+J4; Jmat31(2,2)=+J1;
+
+		Jmat23(0,0)=+J2; Jmat23(0,1)=-J4; Jmat23(0,2)=+J4;
+		Jmat23(1,0)=+J4; Jmat23(1,1)=+J1; Jmat23(1,2)=-J3;
+		Jmat23(2,0)=-J4; Jmat23(2,1)=-J3; Jmat23(2,2)=+J1;
+		
+		Jmat32(0,0)=+J2;  Jmat32(0,1)=+J4; Jmat32(0,2)=-J4;
+		Jmat32(1,0)=-J4;  Jmat32(1,1)=+J1; Jmat32(1,2)=-J3;
+		Jmat32(2,0)=+J4;  Jmat32(2,1)=-J3; Jmat32(2,2)=+J1;
+	}
 	
-	Jmat10(0,0)=+J2;  Jmat10(0,1)=-J4; Jmat10(0,2)=-J4;
-	Jmat10(1,0)=+J4;  Jmat10(1,1)=+J1; Jmat10(1,2)=+J3;
-	Jmat10(2,0)=+J4;  Jmat10(2,1)=+J3; Jmat10(2,2)=+J1;
+	if (hamtype=="octupolar_global")
+	{
+		// Worked by A. Bhardwaj
+		//
+		Jmat01(0,0)=+J1; Jmat01(0,1)=+J2; Jmat01(0,2)=-J1;
+		Jmat01(1,0)=+J3; Jmat01(1,1)=-J1; Jmat01(1,2)=+J4;
+		Jmat01(2,0)=-J4; Jmat01(2,1)=-J1; Jmat01(2,2)=-J3;
 
-	Jmat02(0,0)=+J1; Jmat02(0,1)=-J4; Jmat02(0,2)=+J3;
-	Jmat02(1,0)=+J4; Jmat02(1,1)=+J2; Jmat02(1,2)=+J4;
-	Jmat02(2,0)=+J3; Jmat02(2,1)=-J4; Jmat02(2,2)=+J1;
+		Jmat10(0,0)=+J1;  Jmat10(0,1)=+J3; Jmat10(0,2)=-J4;
+		Jmat10(1,0)=+J2;  Jmat10(1,1)=-J1; Jmat10(1,2)=-J1;
+		Jmat10(2,0)=-J1;  Jmat10(2,1)=+J4; Jmat10(2,2)=-J3;
 
-	Jmat20(0,0)=+J1;  Jmat20(0,1)=+J4; Jmat20(0,2)=+J3;
-	Jmat20(1,0)=-J4;  Jmat20(1,1)=+J2; Jmat20(1,2)=-J4;
-	Jmat20(2,0)=+J3;  Jmat20(2,1)=+J4; Jmat20(2,2)=+J1;
+		Jmat02(0,0)=-J1; Jmat02(0,1)=+J1; Jmat02(0,2)=+J2;
+		Jmat02(1,0)=+J4; Jmat02(1,1)=+J3; Jmat02(1,2)=-J1;
+		Jmat02(2,0)=-J3; Jmat02(2,1)=-J4; Jmat02(2,2)=-J1;
 
-	Jmat03(0,0)=+J1; Jmat03(0,1)=+J3; Jmat03(0,2)=-J4;
-	Jmat03(1,0)=+J3; Jmat03(1,1)=+J1; Jmat03(1,2)=-J4;
-	Jmat03(2,0)=+J4; Jmat03(2,1)=+J4; Jmat03(2,2)=+J2;
+		Jmat20(0,0)=-J1;  Jmat20(0,1)=+J4; Jmat20(0,2)=-J3;
+		Jmat20(1,0)=+J1;  Jmat20(1,1)=+J3; Jmat20(1,2)=-J4;
+		Jmat20(2,0)=+J2;  Jmat20(2,1)=-J1; Jmat20(2,2)=-J1;
+
+		Jmat03(0,0)=-J1; Jmat03(0,1)=-J1; Jmat03(0,2)=-J2;
+		Jmat03(1,0)=+J4; Jmat03(1,1)=-J3; Jmat03(1,2)=+J1;
+		Jmat03(2,0)=-J3; Jmat03(2,1)=+J4; Jmat03(2,2)=+J1;
+
+		Jmat30(0,0)=-J1;  Jmat30(0,1)=+J4; Jmat30(0,2)=-J3;
+		Jmat30(1,0)=-J1;  Jmat30(1,1)=-J3; Jmat30(1,2)=+J4;
+		Jmat30(2,0)=-J2;  Jmat30(2,1)=+J1; Jmat30(2,2)=+J1;
+
+		Jmat12(0,0)=-J3; Jmat12(0,1)=-J4; Jmat12(0,2)=-J1;
+		Jmat12(1,0)=+J1; Jmat12(1,1)=-J1; Jmat12(1,2)=-J2;
+		Jmat12(2,0)=-J4; Jmat12(2,1)=-J3; Jmat12(2,2)=+J1;
+
+		Jmat21(0,0)=-J3;  Jmat21(0,1)=+J1; Jmat21(0,2)=-J4;
+		Jmat21(1,0)=-J4;  Jmat21(1,1)=-J1; Jmat21(1,2)=-J3;
+		Jmat21(2,0)=-J1;  Jmat21(2,1)=-J2; Jmat21(2,2)=+J1;
+
+		Jmat13(0,0)=-J3; Jmat13(0,1)=+J4; Jmat13(0,2)=+J1;
+		Jmat13(1,0)=+J1; Jmat13(1,1)=+J1; Jmat13(1,2)=+J2;
+		Jmat13(2,0)=-J4; Jmat13(2,1)=+J3; Jmat13(2,2)=-J1;
+
+		Jmat31(0,0)=-J3;  Jmat31(0,1)=+J1; Jmat31(0,2)=-J4;
+		Jmat31(1,0)=+J4;  Jmat31(1,1)=+J1; Jmat31(1,2)=+J3;
+		Jmat31(2,0)=+J1;  Jmat31(2,1)=+J2; Jmat31(2,2)=-J1;
+
+		Jmat23(0,0)=-J4; Jmat23(0,1)=+J3; Jmat23(0,2)=-J1;
+		Jmat23(1,0)=-J3; Jmat23(1,1)=+J4; Jmat23(1,2)=+J1;
+		Jmat23(2,0)=+J1; Jmat23(2,1)=+J1; Jmat23(2,2)=+J2;
+
+		Jmat32(0,0)=-J4;  Jmat32(0,1)=-J3; Jmat32(0,2)=+J1;
+		Jmat32(1,0)=+J3;  Jmat32(1,1)=+J4; Jmat32(1,2)=+J1;
+		Jmat32(2,0)=-J1;  Jmat32(2,1)=+J1; Jmat32(2,2)=+J2;	
 	
-        Jmat30(0,0)=+J1;  Jmat30(0,1)=+J3; Jmat30(0,2)=+J4;
-	Jmat30(1,0)=+J3;  Jmat30(1,1)=+J1; Jmat30(1,2)=+J4;
-	Jmat30(2,0)=-J4;  Jmat30(2,1)=-J4; Jmat30(2,2)=+J2;
-
-	Jmat12(0,0)=+J1; Jmat12(0,1)=-J3; Jmat12(0,2)=+J4;
-	Jmat12(1,0)=-J3; Jmat12(1,1)=+J1; Jmat12(1,2)=-J4;
-	Jmat12(2,0)=-J4; Jmat12(2,1)=+J4; Jmat12(2,2)=+J2;
-	
-        Jmat21(0,0)=+J1;  Jmat21(0,1)=-J3; Jmat21(0,2)=-J4;
-	Jmat21(1,0)=-J3;  Jmat21(1,1)=+J1; Jmat21(1,2)=+J4;
-	Jmat21(2,0)=+J4;  Jmat21(2,1)=-J4; Jmat21(2,2)=+J2;
-
-	Jmat13(0,0)=+J1; Jmat13(0,1)=+J4; Jmat13(0,2)=-J3;
-	Jmat13(1,0)=-J4; Jmat13(1,1)=+J2; Jmat13(1,2)=+J4;
-	Jmat13(2,0)=-J3; Jmat13(2,1)=-J4; Jmat13(2,2)=+J1;
-
-	Jmat31(0,0)=+J1;  Jmat31(0,1)=-J4; Jmat31(0,2)=-J3;
-	Jmat31(1,0)=+J4;  Jmat31(1,1)=+J2; Jmat31(1,2)=-J4;
-	Jmat31(2,0)=-J3;  Jmat31(2,1)=+J4; Jmat31(2,2)=+J1;
-
-	Jmat23(0,0)=+J2; Jmat23(0,1)=-J4; Jmat23(0,2)=+J4;
-	Jmat23(1,0)=+J4; Jmat23(1,1)=+J1; Jmat23(1,2)=-J3;
-	Jmat23(2,0)=-J4; Jmat23(2,1)=-J3; Jmat23(2,2)=+J1;
-	
-	Jmat32(0,0)=+J2;  Jmat32(0,1)=+J4; Jmat32(0,2)=-J4;
-	Jmat32(1,0)=-J4;  Jmat32(1,1)=+J1; Jmat32(1,2)=-J3;
-	Jmat32(2,0)=+J4;  Jmat32(2,1)=-J3; Jmat32(2,2)=+J1;
+	}
 
 	Jmats.push_back(Jmat01);
 	Jmats.push_back(Jmat10);
@@ -310,50 +394,17 @@ void Spin_Half_Ross::operator()
 
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void ross_setup(string filename, 
-               Spin_Half_Ross &ross)
-
-{    
-    double J1,J2,J3,J4,gxy,gz, hx,hy,hz;
-    bool found;
-    string str_ret;
-    std::vector< std::vector<int> > pairs;
-    std::vector<int> 		    sublattice;
-    search_for(string("pairs"),filename,str_ret,found);
-    if (found) {if (str_ret.substr(0,1)==string("[")) pairs=convert_string_to_vec_of_vec(str_ret);}    
-    search_for(string("sublattice"),filename,str_ret,found);
-    if (found)
-    {
-          if (str_ret.substr(0,1)==string("[")) sublattice=convert_string_to_vec(str_ret);
-    }    
-    search_for(string("J1"),filename,str_ret,found);
-    if (found){J1=str_to_d(str_ret);} else{J1=0.0;}
-    search_for(string("J2"),filename,str_ret,found);
-    if (found){J2=str_to_d(str_ret);} else{J2=0.0;}
-    search_for(string("J3"),filename,str_ret,found);
-    if (found){J3=str_to_d(str_ret);} else{J3=0.0;}
-    search_for(string("J4"),filename,str_ret,found);
-    if (found){J4=str_to_d(str_ret);} else{J4=0.0;}
-    search_for(string("gxy"),filename,str_ret,found);
-    if (found){gxy=str_to_d(str_ret);} else{gxy=0.0;}
-    search_for(string("gz"),filename,str_ret,found);
-    if (found){gz=str_to_d(str_ret);} else{gz=0.0;}
-    search_for(string("hx"),filename,str_ret,found);
-    if (found){hx=str_to_d(str_ret);} else{hx=0.0;}
-    search_for(string("hy"),filename,str_ret,found);
-    if (found){hy=str_to_d(str_ret);} else{hy=0.0;}
-    search_for(string("hz"),filename,str_ret,found);
-    if (found){hz=str_to_d(str_ret);} else{hz=0.0;}
-    
-    ross.init(pairs,sublattice,J1,J2,J3,J4,gxy,gz,hx,hy,hz);
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
 void ross_sym_setup(string filename, 
-               Spin_Half_Ross &ross)
+               Spin_Half_Ross &ross, std::string outfname)
 
 {    
+    ofstream outfile;
+    const char *cstr = outfname.c_str();
+    outfile.open(cstr, ofstream::app);
+
     double J1,J2,J3,J4,gxy,gz, hx,hy,hz;
     bool found;
+    string hamtype;
     string str_ret;
     std::vector< std::vector<int> > pairs;
     std::vector<int> 		    sublattice;
@@ -384,6 +435,8 @@ void ross_sym_setup(string filename,
     if (found){hy=str_to_d(str_ret);} else{hy=0.0;}
     search_for(string("hz"),filename,str_ret,found);
     if (found){hz=str_to_d(str_ret);} else{hz=0.0;}
+    search_for(string("hamtype"),filename,str_ret,found);
+    if (found){hamtype=str_ret;} else{hamtype="dipolar_global";}
     
     std::vector<int> t1,t2,t3; 
     double	     k1,k2,k3;
@@ -410,8 +463,26 @@ void ross_sym_setup(string filename,
     search_for(string("k3"),filename,str_ret,found);
     if (found){k3=str_to_d(str_ret);} else{k3=0.0;}
 
-    ross.init(pairs,sublattice,J1,J2,J3,J4,gxy,gz,hx,hy,hz, t1,t2,t3,k1,k2,k3);
-    cout<<ross.num_sites<<endl;
+    ross.init(pairs,sublattice,J1,J2,J3,J4,gxy,gz,hx,hy,hz, t1,t2,t3,k1,k2,k3, hamtype);
+    outfile<<"J1 (meV)  = "<<J1<<endl;
+    outfile<<"J2 (meV)  = "<<J2<<endl;
+    outfile<<"J3 (meV)  = "<<J3<<endl;
+    outfile<<"J4 (meV)  = "<<J4<<endl;
+    outfile<<"gxy       = "<<gxy<<endl;
+    outfile<<"gz        = "<<gz<<endl;
+    outfile<<"hx (T)    = "<<hx<<endl;
+    outfile<<"hy (T)    = "<<hy<<endl;
+    outfile<<"hz (T)    = "<<hz<<endl;
+    //outfile<<"t1        = "<<t1<<endl;
+    //outfile<<"t2        = "<<t2<<endl;
+    //outfile<<"t3        = "<<t3<<endl;
+    outfile<<"k1        = "<<k1<<endl;
+    outfile<<"k2        = "<<k2<<endl;
+    outfile<<"k3        = "<<k3<<endl;
+    outfile<<"hamtype   = "<<hamtype<<endl;
+    outfile<<"Nsites    = "<<ross.num_sites<<endl;
+
+    outfile.close();
 }
 
 
