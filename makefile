@@ -20,7 +20,6 @@ CODE_OBJECTS=\
 	./obj/printing_functions.o \
 	./obj/search_for.o	\
 	./obj/vector_utilities.o \
-	./obj/oleg.o \
 	./obj/ross.o \
 	./obj/ybmg.o \
 	
